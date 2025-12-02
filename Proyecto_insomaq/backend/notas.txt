@@ -1,0 +1,26 @@
+inizializar un proyecto de node.js:
+npm init -y
+
+instala las dependencias:
+npm install express mysql body-parser
+
+instala sequelize para la base de datos:
+npm install sequelize
+
+instala las herramientas de sequelize:
+npm install --save-dev sequelize-cli
+inicializa sequelize en el proyecto:
+npx sequelize init
+
+crea la migracion para la tabla laminas:
+npx sequelize migration:generate --name create-laminas
+
+ejecuta la migracion:
+npx sequelize db:migrate 
+
+ejecuta el proyecto:
+node app.js
+
+comando para el token
+npm install jsonwebtoken bcryptjs
+

@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Inventario</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f9fafb;
+      margin: 0;
+      padding: 20px;
+    }
+    h1, h2 {
+      margin: 0 0 10px;
+    }
+    .container {
+      max-width: 1400px;
+      margin: auto;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    .card {
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      text-align: center;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    .card p {
+      font-size: 24px;
+      font-weight: bold;
+      margin: 5px 0;
+    }
+    .charts {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    .chart-box {
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    .tables {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+    }
+    .table-box {
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    th, td {
+      padding: 8px;
+      text-align: left;
+      border-bottom: 1px solid #eee;
+    }
+    ul {
+      margin: 0;
+      padding-left: 20px;
+      font-size: 14px;
+    }
+    canvas {
+      width: 100% !important;
+      height: 400px !important;
+    }
+    /* Línea de alerta en rojo */
+    .sin-stock {
+      color: red;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <h1>Gestión de Inventario de Láminas</h1>
+      <div>
+        🔔 👤
+      </div>
+    </div>
+
+    <!-- Cards resumen -->
+    <div class="cards">
+      <div class="card">
+        📚
+        <p>300</p>
+        <span>Láminas</span>
+      </div>
+      <div class="card">
+        ✂️
+        <p>58</p>
+        <span>Cortes</span>
+      </div>
+      <div class="card">
+        ⛏️
+        <p>120</p>
+        <span>Retazos</span>
+      </div>
+      <div class="card">
+        ⚠️
+        <p>12</p>
+        <span>Alertas</span>
+      </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="charts">
+      <div class="chart-box">
+        <h2>Cortes por máquina</h2>
+        <canvas id="barChart"></canvas>
+      </div>
+      <div class="chart-box">
+        <h2>% de aprovechamiento</h2>
+        <canvas id="pieChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Tablas -->
+    <div class="tables">
+      <div class="table-box">
+        <h2>Últimas actividades</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Acción</th>
+              <th>Usuario</th>
+              <th>Máquina</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>15/09/2025</td>
+              <td>Corte realizado (L001)</td>
+              <td>Juan</td>
+              <td>CNC-01</td>
+            </tr>
+            <tr>
+              <td>15/09/2025</td>
+              <td>Nueva lámina registrada</td>
+              <td>María</td>
+              <td>-</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="table-box">
+        <h2>Alertas</h2>
+        <ul>
+          <li>Lámina de acero 2mm: stock bajo (2 unidades).</li>
+          <li>Lamina de aluminio 3mm: stock bajo (1 unidad).</li>
+          <li class="sin-stock">Lamina de acero inoxidable 2mm: sin stock (0 unidades).</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart.js para los gráficos -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    // Gráfico de barras
+    const ctxBar = document.getElementById('barChart').getContext('2d');
+    new Chart(ctxBar, {
+      type: 'bar',
+      data: {
+        labels: ['Máquina 1', 'Máquina 2', 'Máquina 3', 'Máquina 4'],
+        datasets: [{
+          label: 'Cortes',
+          data: [13, 18, 13, 10],
+          backgroundColor: '#0b9fbf'
+        }]
+      },
+      options: { responsive: true, plugins: { legend: { display: false } } }
+    });
+
+    // Gráfico circular
+    const ctxPie = document.getElementById('pieChart').getContext('2d');
+    new Chart(ctxPie, {
+      type: 'pie',
+      data: {
+        labels: ['Usado 65%', 'Desperdicio 35%'],
+        datasets: [{
+          data: [65, 35],
+          backgroundColor: ['#0b9fbf', '#1f3b63']
+        }]
+      },
+      options: { responsive: true }
+    });
+  </script>
+</body>
+</html>

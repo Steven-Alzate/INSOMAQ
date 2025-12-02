@@ -1,0 +1,15 @@
+module.exports = (sequelize, DataTypes) => {
+  const TipoLamina = sequelize.define('tipo_lamina', {
+    nombre: { type: DataTypes.STRING, unique: true },
+    fecha: DataTypes.DATE,
+    hora: DataTypes.DATE
+  }, {
+    timestamps: false
+  });
+
+  TipoLamina.associate = (models) => {
+    TipoLamina.hasMany(models.laminas, { foreignKey: 'id_tipo' });
+  };
+
+  return TipoLamina;
+};

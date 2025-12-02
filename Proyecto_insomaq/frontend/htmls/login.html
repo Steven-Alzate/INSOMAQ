@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Iniciar sesión - Insomaq</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f0f2f5;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .container {
+      width: 100%;
+      height: 100%;
+      display: flex;
+    }
+
+    .left, .right {
+      flex: 1;
+      height: 100%;
+    }
+
+    .left {
+      background-color: #ffffff;
+      padding: 80px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .logo {
+      margin-bottom: 20px;
+      margin-top: 20px !important;
+    }
+
+    h2 {
+      font-size: 24px;
+      margin-bottom: 30px;
+      color: #222;
+    }
+
+    form {
+      max-width: 1300px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+
+    input[type="email"],
+    input[type="password"] {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 20px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      background-color: #eef3ff;
+      font-size: 15px;
+    }
+
+    .form-options {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+
+    .form-options label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: normal;
+    }
+
+    .form-options a {
+      color: #0b9fbf;
+      text-decoration: none;
+    }
+
+    .form-options a:hover {
+      text-decoration: underline;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      background-color: #0b9fbf;
+      color: white;
+      font-size: 16px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .terms {
+      margin-top: 20px;
+      font-size: 12px;
+      color: #555;
+      max-width: 400px;
+    }
+
+    .terms a {
+      color: #0000ee;
+      text-decoration: underline;
+    }
+
+    .right {
+      background-color: #0b9fbf;
+      color: white;
+      display: flex;  
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 60px;
+      background-image: URL("./images/Insomaq-3-e1728386607604.webp");
+      background-size: cover;
+      background-position: center;
+      background-blend-mode: multiply;
+    }
+
+    .right h1 {
+      font-size: 42px;
+      font-weight: 700;
+      margin-bottom: 20px;
+    }
+
+    .right p {
+      font-size: 18px;
+      max-width: 450px;
+      color: #f0f0f0;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+
+    <div class="left">
+      <img src="https://insomaq.com/wp-content/uploads/2023/09/cropped-logo-insomaq-horizontal-1.png"
+           alt="Insomaq Logo" width="450" class="logo" />
+      <h2>Bienvenido a Insomaq,<br>Inicie sesión para continuar</h2>
+
+      <form>
+        <label for="email">Correo electrónico</label>
+        <input type="email" id="email" placeholder="correo@ejemplo.com" required />
+
+        <label for="password">Contraseña</label>
+        <input type="password" id="password" placeholder="••••••••" required />
+
+        <div class="form-options">
+          <label><input type="checkbox" /> Recuérdame</label>
+          <a href="#">¿Olvidaste tu contraseña?</a>
+        </div>
+
+        <button type="submit">Iniciar sesión</button>
+
+        </p>
+      </form>
+    </div>
+
+    <div class="right">
+<!--       <img src="./images/Insomaq-3-e1728386607604.webp" alt="">
+ -->      <h1> ¡BIENVENIDOS A INSOMAQ!</h1>
+      <p>Metalizando tus sueños, construyendo realidades..</p>
+    </div>
+
+  </div>
+
+</body>
+</html>
