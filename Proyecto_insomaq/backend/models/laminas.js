@@ -13,11 +13,11 @@ module.exports = (sequelize, DataTypes) => {
       references: { model: 'tipo_lamina', key: 'id' }
     },
     ancho: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.DECIMAL(10,3),
       allowNull: true
     },
     largo: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.DECIMAL(10,3),
       allowNull: true
     },
     stock: {

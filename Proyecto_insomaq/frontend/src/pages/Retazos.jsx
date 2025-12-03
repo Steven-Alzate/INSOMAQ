@@ -16,6 +16,14 @@ export default function Retazos() {
   const [editId, setEditId] = useState(null);
   const API_URL = "http://localhost:4000/retazos";
 
+  const fmtMeasure = (v) => {
+    if (v === null || v === undefined || v === "") return "-";
+    const n = Number(String(v).replace(',', '.'));
+    if (Number.isNaN(n)) return String(v);
+    const rounded = Math.round(n * 1000) / 1000;
+    return Number.isInteger(rounded) ? String(rounded) : String(rounded);
+  };
+
   useEffect(() => {
     fetchRetazos();
     fetchLaminas();
@@ -69,7 +77,12 @@ export default function Retazos() {
     }
 
     try {
-      const payload = { ...form };
+      // Enviar largo/ancho como números (aceptar coma o punto como separador)
+      const payload = {
+        ...form,
+        largo: parseFloat(String(largo).replace(',', '.')),
+        ancho: parseFloat(String(ancho).replace(',', '.'))
+      };
       // Si el frontend usa 'fecha' mapeamos a lo que el backend espera (campo fecha)
       const options = {
         method: editId ? "PUT" : "POST",
@@ -144,7 +157,7 @@ export default function Retazos() {
                 <option value="">Selecciona lámina</option>
                 {laminas.map((lamina) => (
                   <option key={lamina.id ?? `lam-${Math.random()}`} value={lamina.id}>
-                    {lamina.tipo ?? "Sin tipo"} - {lamina.largo}m x {lamina.ancho}m
+                    {lamina.tipo ?? "Sin tipo"} - {fmtMeasure(lamina.largo)}m x {fmtMeasure(lamina.ancho)}m
                   </option>
                 ))}
               </select>
@@ -154,6 +167,7 @@ export default function Retazos() {
             <div className="relative flex-1 min-w-[90px]">
               <input
                 type="number"
+                step="0.01"
                 name="largo"
                 value={form.largo}
                 onChange={handleChange}
@@ -167,6 +181,7 @@ export default function Retazos() {
             <div className="relative flex-1 min-w-[90px]">
               <input
                 type="number"
+                step="0.01"
                 name="ancho"
                 value={form.ancho}
                 onChange={handleChange}
@@ -243,9 +258,9 @@ export default function Retazos() {
                     <td className="p-3">
                       {laminas.find((l) => l.id === retazo.id_lamina_original)?.tipo || "Desconocida"}
                     </td>
-                    <td className="p-3">{retazo.largo} m</td>
-                    <td className="p-3">{retazo.ancho} m</td>
-                    <td className="p-3">{retazo.id_maquina}</td>
+                    <td className="p-3">{fmtMeasure(retazo.largo)} m</td>
+                    <td className="p-3">{fmtMeasure(retazo.ancho)} m</td>
+                    <td className="p-3">{retazo.maquina || (maquinas.find((m) => m.id === retazo.id_maquina)?.nombre) || retazo.id_maquina}</td>
                     <td className="p-3">{retazo.fecha ? retazo.fecha.split("T")[0] : (retazo.fecha_corte ? retazo.fecha_corte.split("T")[0] : "-")}</td>
                     <td className="p-3 flex gap-2">
                       <button

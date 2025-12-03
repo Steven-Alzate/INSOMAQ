@@ -23,10 +23,21 @@ export default function Cortes() {
     fecha_to: "",
   });
 
+  const [showLaminaModal, setShowLaminaModal] = useState(false);
+  const [laminaQuery, setLaminaQuery] = useState("");
+
   const [editId, setEditId] = useState(null);
   const { user, token } = useContext(AuthContext);
 
   const API_URL = "http://localhost:4000/cortes";
+
+  const fmtMeasure = (v) => {
+    if (v === null || v === undefined || v === "") return "-";
+    const n = Number(String(v).replace(',', '.'));
+    if (Number.isNaN(n)) return String(v);
+    const rounded = Math.round(n * 1000) / 1000;
+    return Number.isInteger(rounded) ? String(rounded) : String(rounded);
+  };
 
   useEffect(() => {
     fetchCortes();
@@ -122,8 +133,30 @@ export default function Cortes() {
       return;
     }
 
+    // Validación: las medidas no pueden superar las dimensiones de la lámina seleccionada
+    const lam = laminas.find((l) => String(l.id) === String(id_lamina));
+    if (lam) {
+      const anchoLamina = Number(lam.ancho) || 0;
+      const largoLamina = Number(lam.largo) || 0;
+      const anchoReq = Number(ancho_cortado);
+      const largoReq = Number(largo_cortado);
+
+      if (anchoReq > anchoLamina || largoReq > largoLamina) {
+        alert("No es posible: las medidas solicitadas superan las dimensiones de la lámina seleccionada.");
+        return;
+      }
+    }
+
     try {
-      const corteData = { id_lamina, ancho_cortado, largo_cortado, id_maquina, id_usuario, fecha };
+      // Asegurar que ancho_cortado y largo_cortado se envíen como números (decimales posibles)
+      const corteData = {
+        id_lamina,
+        ancho_cortado: parseFloat(String(ancho_cortado).replace(',', '.')),
+        largo_cortado: parseFloat(String(largo_cortado).replace(',', '.')),
+        id_maquina,
+        id_usuario,
+        fecha
+      };
 
       const options = {
         method: editId ? "PUT" : "POST",
@@ -201,20 +234,21 @@ export default function Cortes() {
             onSubmit={handleSubmit}
             className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-3"
           >
-            <select
-              name="id_lamina"
-              value={form.id_lamina}
-              onChange={handleChange}
-              className="border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-emerald-500"
-              required
-            >
-              <option value="">Selecciona una lámina</option>
-              {laminas.map((l) => (
-                <option key={l.id} value={l.id}>
-                  ID {l.id} - {l.tipo || `${l.largo} x ${l.ancho}`}
-                </option>
-              ))}
-            </select>
+            {/* Botón que abre modal para seleccionar lámina */}
+            <div>
+              <button
+                type="button"
+                onClick={() => setShowLaminaModal(true)}
+                className="w-full text-left border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-emerald-500 bg-white"
+              >
+                {(() => {
+                  const l = laminas.find((x) => String(x.id) === String(form.id_lamina));
+                  if (l) return 'ID ' + l.id + ' - ' + (l.tipo || `${fmtMeasure(l.largo)} x ${fmtMeasure(l.ancho)}`);
+                  return 'Selecciona una lámina';
+                })()}
+              </button>
+              <input type="hidden" name="id_lamina" value={form.id_lamina} />
+            </div>
 
             <input
               type="number"
@@ -236,15 +270,20 @@ export default function Cortes() {
               className="border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-emerald-500"
               required
             />
-            <input
-              type="number"
+            <select
               name="id_maquina"
               value={form.id_maquina}
               onChange={handleChange}
-              placeholder="ID Máquina"
               className="border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-emerald-500"
               required
-            />
+            >
+              <option value="">Selecciona máquina</option>
+              {maquinas.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.nombre || `ID ${m.id}`}
+                </option>
+              ))}
+            </select>
             {user && user.nombre ? (
               <div>
                 <input
@@ -289,6 +328,94 @@ export default function Cortes() {
           </form>
         </div>
 
+        {/* Modal de selección de lámina */}
+        {showLaminaModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black opacity-50" onClick={() => setShowLaminaModal(false)} />
+            <div className="relative bg-white w-11/12 max-w-3xl rounded-lg shadow-lg p-4 z-10">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                <h3 className="text-lg font-semibold">Selecciona una lámina</h3>
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <input
+                    type="text"
+                    value={laminaQuery}
+                    onChange={(e) => setLaminaQuery(e.target.value)}
+                    placeholder="Buscar por ID, tipo, ancho, largo o stock"
+                    className="border border-gray-300 rounded-md p-2 w-full sm:w-80"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowLaminaModal(false)}
+                    className="text-gray-600 hover:text-gray-800 text-2xl leading-none"
+                    aria-label="Cerrar"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+
+              <div className="max-h-72 overflow-auto">
+                {laminas.length === 0 ? (
+                  <p className="text-gray-500">No hay láminas disponibles.</p>
+                ) : (
+                  (() => {
+                    const q = (laminaQuery || "").toString().trim().toLowerCase();
+                    const filtered = laminas.filter((l) => {
+                      if (!q) return true;
+                      const parts = [
+                        String(l.id),
+                        (l.tipo || "").toString(),
+                        String(l.ancho || ""),
+                        String(l.largo || ""),
+                        String(l.stock || "")
+                      ].join(" ").toLowerCase();
+                      return parts.includes(q);
+                    });
+
+                    if (filtered.length === 0) {
+                      return <p className="text-gray-500">No se encontraron láminas para la búsqueda.</p>;
+                    }
+
+                    return (
+                      <table className="w-full table-auto">
+                        <thead>
+                          <tr className="text-left text-sm text-gray-600 border-b">
+                            <th className="py-2">ID</th>
+                            <th className="py-2">Tipo / Dimensiones</th>
+                            <th className="py-2">Stock</th>
+                            <th className="py-2 text-right">Acción</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filtered.map((l) => (
+                            <tr key={l.id} className="hover:bg-gray-50">
+                              <td className="py-2">{l.id}</td>
+                              <td className="py-2">{l.tipo || `${fmtMeasure(l.largo)} x ${fmtMeasure(l.ancho)}`}</td>
+                              <td className="py-2">{l.stock ?? '-'}</td>
+                              <td className="py-2 text-right">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setForm((f) => ({ ...f, id_lamina: String(l.id) }));
+                                    setShowLaminaModal(false);
+                                  }}
+                                  className="bg-teal-600 text-white px-3 py-1 rounded hover:bg-teal-700"
+                                >
+                                  Seleccionar
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    );
+                  })()
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Tabla */}
         <div className=" bg-white p-8 rounded-2xl shadow-lg overflow-x-auto">
           <h2 className="text-[#2a3f54] text-2xl font-semibold mb-6 border-b pb-2">
@@ -307,7 +434,7 @@ export default function Cortes() {
                   <option value="">Todas las láminas</option>
                   {laminas.map((l) => (
                     <option key={l.id} value={l.id}>
-                      {`ID ${l.id} - ${l.tipo || `${l.largo}x${l.ancho}`}`}
+                      {`ID ${l.id} - ${l.tipo || `${fmtMeasure(l.largo)}x${fmtMeasure(l.ancho)}`}`}
                     </option>
                   ))}
                 </select>
@@ -409,8 +536,8 @@ export default function Cortes() {
                       <tr key={corte.id} className="border-t hover:bg-gray-50 transition">
                         <td className="p-3">{corte.id}</td>
                         <td className="p-3">{laminaLabel}</td>
-                        <td className="p-3">{corte.ancho_cortado}</td>
-                        <td className="p-3">{corte.largo_cortado}</td>
+                        <td className="p-3">{fmtMeasure(corte.ancho_cortado)}</td>
+                        <td className="p-3">{fmtMeasure(corte.largo_cortado)}</td>
                         <td className="p-3">{maquinaLabel}</td>
                         <td className="p-3">{usuarioLabel}</td>
                         <td className="p-3">{corte.fecha ? corte.fecha.split("T")[0] : "-"}</td>

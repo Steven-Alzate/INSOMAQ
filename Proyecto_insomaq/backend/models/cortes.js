@@ -13,11 +13,11 @@ module.exports = (sequelize, DataTypes) => {
       references: { model: 'laminas', key: 'id' }
     },
     ancho_cortado: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.DECIMAL(10,3),
       allowNull: true
     },
     largo_cortado: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.DECIMAL(10,3),
       allowNull: true
     },
     id_maquina: {

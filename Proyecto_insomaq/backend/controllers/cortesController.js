@@ -1,5 +1,5 @@
 const db = require('../models');
-const { cortes, laminas, maquinas, usuarios } = db;
+const { cortes, laminas, maquinas, usuarios, retazos } = db;
 
 // Crear corte
 exports.crear = async (req, res) => {
@@ -23,6 +23,13 @@ exports.crear = async (req, res) => {
         throw { status: 400, message: 'No hay stock suficiente en la lámina seleccionada.' };
       }
 
+      // Verificar que las medidas solicitadas no superen las dimensiones de la lámina
+      const anchoLamina = Number(lam.ancho) || 0;
+      const largoLamina = Number(lam.largo) || 0;
+      if (Number(ancho_cortado) > anchoLamina || Number(largo_cortado) > largoLamina) {
+        throw { status: 400, message: 'Las medidas solicitadas superan las dimensiones de la lámina seleccionada.' };
+      }
+
       // Crear el corte
       const nuevoCorte = await cortes.create({
         id_lamina,
@@ -31,6 +38,60 @@ exports.crear = async (req, res) => {
         id_maquina,
         id_usuario
       }, { transaction: t });
+
+      // Si hay sobrante de la lámina tras el corte, crear retazos.
+      // Generamos candidatos y eliminamos duplicados antes de insertar:
+      const anchoLaminaNum = Number(lam.ancho) || 0;
+      const largoLaminaNum = Number(lam.largo) || 0;
+      const anchoCortadoNum = Number(ancho_cortado) || 0;
+      const largoCortadoNum = Number(largo_cortado) || 0;
+
+      const candidates = [];
+
+      // Retazo a la derecha del corte: ancho = lam.ancho - ancho_cortado, largo = largo_cortado
+      const rightAncho = anchoLaminaNum - anchoCortadoNum;
+      if (rightAncho > 0 && largoCortadoNum > 0) {
+        candidates.push({ ancho: rightAncho, largo: largoCortadoNum });
+      }
+
+      // Retazo debajo del corte: ancho = lam.ancho - ancho_cortado (sobrante), largo = lam.largo - largo_cortado
+      const bottomAncho = anchoLaminaNum - anchoCortadoNum;
+      const bottomLargo = largoLaminaNum - largoCortadoNum;
+      if (bottomLargo > 0 && bottomAncho > 0) {
+        candidates.push({ ancho: bottomAncho, largo: bottomLargo });
+      }
+
+      // Eliminar duplicados en candidatos y elegir sólo el retazo más útil.
+      const seen = new Set();
+      const unique = [];
+      for (const c of candidates) {
+        const key = `${Number(c.ancho).toFixed(6)}_${Number(c.largo).toFixed(6)}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          unique.push(c);
+        }
+      }
+
+      // Si hay más de un candidato, elegir el de mayor área (ancho * largo)
+      if (unique.length > 0) {
+        let chosen = unique[0];
+        if (unique.length > 1) {
+          chosen = unique.reduce((max, cur) => {
+            const areaCur = Number(cur.ancho) * Number(cur.largo);
+            const areaMax = Number(max.ancho) * Number(max.largo);
+            return areaCur > areaMax ? cur : max;
+          }, unique[0]);
+        }
+
+        await retazos.create({
+          id_lamina_original: lam.id,
+          id_corte: nuevoCorte.id,
+          ancho: chosen.ancho,
+          largo: chosen.largo,
+          id_maquina: id_maquina,
+          disponible: true
+        }, { transaction: t });
+      }
 
       // Decrementar stock en 1 unidad (ajustable si se define otra regla)
       lam.stock = currentStock - 1;
@@ -118,6 +179,17 @@ exports.actualizar = async (req, res) => {
     const corte = await cortes.findByPk(id);
     if (!corte) {
       return res.status(404).json({ message: 'Corte no encontrado.' });
+    }
+
+    // Validar que las medidas no superen las dimensiones de la lámina seleccionada
+    const lam = await laminas.findByPk(id_lamina);
+    if (!lam) {
+      return res.status(404).json({ error: 'Lámina no encontrada.' });
+    }
+    const anchoLamina = Number(lam.ancho) || 0;
+    const largoLamina = Number(lam.largo) || 0;
+    if (Number(ancho_cortado) > anchoLamina || Number(largo_cortado) > largoLamina) {
+      return res.status(400).json({ error: 'Las medidas solicitadas superan las dimensiones de la lámina seleccionada.' });
     }
 
     await corte.update({ id_lamina, ancho_cortado, largo_cortado, id_maquina, id_usuario });

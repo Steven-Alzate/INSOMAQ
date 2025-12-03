@@ -36,7 +36,23 @@ exports.obtenerTodos = async (req, res) => {
       ]
     });
 
-    res.status(200).json(retazos_data);
+    // Mapear para incluir el nombre de la máquina
+    const mapped = retazos_data.map(r => ({
+      id: r.id,
+      id_lamina_original: r.id_lamina_original,
+      id_corte: r.id_corte,
+      ancho: r.ancho,
+      largo: r.largo,
+      id_maquina: r.id_maquina,
+      maquina: r.maquinas ? r.maquinas.nombre : null,
+      disponible: r.disponible,
+      fecha: r.fecha,
+      hora: r.hora,
+      laminas: r.laminas,
+      cortes: r.cortes
+    }));
+
+    res.status(200).json(mapped);
   } catch (err) {
     console.error('Error al obtener retazos:', err);
     res.status(500).json({ error: 'Error al obtener los retazos.' });
@@ -59,7 +75,22 @@ exports.obtenerPorId = async (req, res) => {
       return res.status(404).json({ message: 'Retazo no encontrado.' });
     }
 
-    res.status(200).json(retazo);
+    const mapped = {
+      id: retazo.id,
+      id_lamina_original: retazo.id_lamina_original,
+      id_corte: retazo.id_corte,
+      ancho: retazo.ancho,
+      largo: retazo.largo,
+      id_maquina: retazo.id_maquina,
+      maquina: retazo.maquinas ? retazo.maquinas.nombre : null,
+      disponible: retazo.disponible,
+      fecha: retazo.fecha,
+      hora: retazo.hora,
+      laminas: retazo.laminas,
+      cortes: retazo.cortes
+    };
+
+    res.status(200).json(mapped);
   } catch (err) {
     console.error('Error al obtener retazo:', err);
     res.status(500).json({ error: 'Error al obtener el retazo.' });
