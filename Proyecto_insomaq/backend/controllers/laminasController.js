@@ -5,20 +5,30 @@ exports.crear = async (req, res) => {
   try {
     const { id_tipo, ancho, largo, stock } = req.body;
 
-    if (!id_tipo || !ancho || !largo) {
+    if (!id_tipo || ancho === undefined || ancho === null || largo === undefined || largo === null) {
       return res.status(400).json({
         message: 'Todos los campos son obligatorios.',
       });
     }
 
+    // Normalizar ancho/largo a 1 decimal (evita respuestas como 20.500)
+    const anchoNorm = (() => {
+      const n = parseFloat(ancho);
+      return Number.isNaN(n) ? null : Number(n.toFixed(1));
+    })();
+    const largoNorm = (() => {
+      const n = parseFloat(largo);
+      return Number.isNaN(n) ? null : Number(n.toFixed(1));
+    })();
+
     // ---------------------------
-    // 🔥 AGREGADO: verificar si ya existe una lámina igual
+    // verificar si ya existe una lámina igual (usando valores normalizados)
     // ---------------------------
     const laminaExistente = await laminas.findOne({
       where: {
         id_tipo,
-        ancho,
-        largo
+        ancho: anchoNorm,
+        largo: largoNorm
       }
     });
 
@@ -40,8 +50,8 @@ exports.crear = async (req, res) => {
     // Si no existe, entonces crearla (tu código original)
     const nuevaLamina = await laminas.create({
       id_tipo,
-      ancho,
-      largo,
+      ancho: anchoNorm,
+      largo: largoNorm,
       stock: stock ?? 1
     });
 
@@ -129,16 +139,26 @@ exports.actualizar = async (req, res) => {
     const { id } = req.params;
     const { id_tipo, ancho, largo, stock } = req.body;
 
-    if (!id_tipo || !ancho || !largo) {
+    if (!id_tipo || ancho === undefined || ancho === null || largo === undefined || largo === null) {
       return res.status(400).json({ error: 'Los campos id_tipo, ancho y largo son requeridos.' });
     }
+
+    // Normalizar ancho/largo a 1 decimal para la actualización
+    const anchoNorm = (() => {
+      const n = parseFloat(ancho);
+      return Number.isNaN(n) ? null : Number(n.toFixed(1));
+    })();
+    const largoNorm = (() => {
+      const n = parseFloat(largo);
+      return Number.isNaN(n) ? null : Number(n.toFixed(1));
+    })();
 
     const lamina = await laminas.findByPk(id);
     if (!lamina) {
       return res.status(404).json({ message: 'Lámina no encontrada.' });
     }
 
-    await lamina.update({ id_tipo, ancho, largo, stock: stock !== undefined ? stock : lamina.stock });
+    await lamina.update({ id_tipo, ancho: anchoNorm, largo: largoNorm, stock: stock !== undefined ? stock : lamina.stock });
     res.status(200).json({ message: 'Lámina actualizada exitosamente', data: lamina });
   } catch (err) {
     console.error('Error al actualizar lámina:', err);
@@ -182,12 +202,22 @@ exports.crearOCombinar = async (req, res) => {
   try {
     const { id_tipo, ancho, largo, stock } = req.body;
 
-    if (!id_tipo || !ancho || !largo) {
+    if (!id_tipo || ancho === undefined || ancho === null || largo === undefined || largo === null) {
       return res.status(400).json({ error: 'Los campos id_tipo, ancho y largo son requeridos.' });
     }
 
-    // Buscar si ya existe una lámina con los mismos atributos
-    const existente = await laminas.findOne({ where: { id_tipo, ancho, largo } });
+    // Normalizar ancho/largo a 1 decimal
+    const anchoNorm = (() => {
+      const n = parseFloat(ancho);
+      return Number.isNaN(n) ? null : Number(n.toFixed(1));
+    })();
+    const largoNorm = (() => {
+      const n = parseFloat(largo);
+      return Number.isNaN(n) ? null : Number(n.toFixed(1));
+    })();
+
+    // Buscar si ya existe una lámina con los mismos atributos (normalizados)
+    const existente = await laminas.findOne({ where: { id_tipo, ancho: anchoNorm, largo: largoNorm } });
 
     if (existente) {
       const suma = (Number(existente.stock) || 0) + (Number(stock) || 0);
@@ -196,7 +226,7 @@ exports.crearOCombinar = async (req, res) => {
     }
 
     // Si no existe, crear nueva lámina
-    const nueva = await laminas.create({ id_tipo, ancho, largo, stock: stock || 0 });
+    const nueva = await laminas.create({ id_tipo, ancho: anchoNorm, largo: largoNorm, stock: stock || 0 });
     const lam = await laminas.findByPk(nueva.id, {
       include: [{ model: tipo_lamina, attributes: ['id', 'nombre'] }]
     });

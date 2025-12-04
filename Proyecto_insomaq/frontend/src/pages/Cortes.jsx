@@ -4,10 +4,12 @@ import { AuthContext } from "../context/AuthContext";
 export default function Cortes() {
   const [cortes, setCortes] = useState([]);
   const [laminas, setLaminas] = useState([]);
+  const [retazos, setRetazos] = useState([]);
   const [maquinas, setMaquinas] = useState([]);
   const [usuariosList, setUsuariosList] = useState([]);
   const [form, setForm] = useState({
     id_lamina: "",
+    id_retazo: "",
     ancho_cortado: "",
     largo_cortado: "",
     id_maquina: "",
@@ -25,6 +27,7 @@ export default function Cortes() {
 
   const [showLaminaModal, setShowLaminaModal] = useState(false);
   const [laminaQuery, setLaminaQuery] = useState("");
+  const [modalMode, setModalMode] = useState('laminas'); // 'laminas' | 'retazos'
 
   const [editId, setEditId] = useState(null);
   const { user, token } = useContext(AuthContext);
@@ -42,6 +45,7 @@ export default function Cortes() {
   useEffect(() => {
     fetchCortes();
     fetchLaminas();
+    fetchRetazos();
     fetchMaquinas();
     fetchUsuarios();
   }, []);
@@ -80,6 +84,17 @@ export default function Cortes() {
     }
   };
 
+  const fetchRetazos = async () => {
+    try {
+      const res = await fetch("http://localhost:4000/retazos");
+      if (!res.ok) throw new Error("Error al obtener retazos");
+      const data = await res.json();
+      setRetazos(Array.isArray(data) ? data.filter(r => r.disponible !== false) : []);
+    } catch (err) {
+      console.error("Error al obtener retazos:", err);
+    }
+  };
+
   const fetchMaquinas = async () => {
     try {
       const res = await fetch("http://localhost:4000/maquinas");
@@ -93,10 +108,10 @@ export default function Cortes() {
 
   const fetchUsuarios = async () => {
     try {
-      // Intentar sin token primero (por si el endpoint no requiere auth en tu entorno)
-      let res = await fetch("http://localhost:4000/usuarios");
-      if (res.status === 401 && token) {
-        // Reintentar con token
+      // Primero intentar el endpoint público que no requiere token
+      let res = await fetch("http://localhost:4000/usuarios/public");
+      // Si el público no existe o devuelve 401/403 y tenemos token, reintentar con el endpoint protegido
+      if ((res.status === 404 || res.status === 401 || res.status === 403) && token) {
         res = await fetch("http://localhost:4000/usuarios", { headers: { Authorization: `Bearer ${token}` } });
       }
 
@@ -106,7 +121,7 @@ export default function Cortes() {
       }
 
       const data = await res.json();
-      setUsuariosList(data);
+      setUsuariosList(data || []);
     } catch (err) {
       console.error("Error al obtener usuarios:", err);
     }
@@ -126,31 +141,46 @@ export default function Cortes() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const { id_lamina, ancho_cortado, largo_cortado, id_maquina, id_usuario, fecha } = form;
+    const { id_lamina, id_retazo, ancho_cortado, largo_cortado, id_maquina, id_usuario, fecha } = form;
 
-    if (!id_lamina || !ancho_cortado || !largo_cortado || !id_maquina || !id_usuario || !fecha) {
+    if ((!id_lamina && !id_retazo) || !ancho_cortado || !largo_cortado || !id_maquina || !id_usuario || !fecha) {
       alert("Todos los campos son obligatorios");
       return;
     }
 
-    // Validación: las medidas no pueden superar las dimensiones de la lámina seleccionada
-    const lam = laminas.find((l) => String(l.id) === String(id_lamina));
-    if (lam) {
-      const anchoLamina = Number(lam.ancho) || 0;
-      const largoLamina = Number(lam.largo) || 0;
-      const anchoReq = Number(ancho_cortado);
-      const largoReq = Number(largo_cortado);
+    // Si seleccionó una lámina, validar medidas contra la lámina
+    if (id_lamina) {
+      const lam = laminas.find((l) => String(l.id) === String(id_lamina));
+      if (lam) {
+        const anchoLamina = Number(lam.ancho) || 0;
+        const largoLamina = Number(lam.largo) || 0;
+        const anchoReq = Number(ancho_cortado);
+        const largoReq = Number(largo_cortado);
 
-      if (anchoReq > anchoLamina || largoReq > largoLamina) {
-        alert("No es posible: las medidas solicitadas superan las dimensiones de la lámina seleccionada.");
-        return;
+        if (anchoReq > anchoLamina || largoReq > largoLamina) {
+          alert("No es posible: las medidas solicitadas superan las dimensiones de la lámina seleccionada.");
+          return;
+        }
+      }
+    }
+
+    // Si seleccionó un retazo, validar medidas contra el retazo
+    if (id_retazo) {
+      const rz = retazos.find((r) => String(r.id) === String(id_retazo));
+      if (rz) {
+        const anchoR = Number(rz.ancho) || 0;
+        const largoR = Number(rz.largo) || 0;
+        if (Number(ancho_cortado) > anchoR || Number(largo_cortado) > largoR) {
+          alert("No es posible: las medidas solicitadas superan las dimensiones del retazo seleccionado.");
+          return;
+        }
       }
     }
 
     try {
       // Asegurar que ancho_cortado y largo_cortado se envíen como números (decimales posibles)
       const corteData = {
-        id_lamina,
+        ...(id_retazo ? { id_retazo } : { id_lamina }),
         ancho_cortado: parseFloat(String(ancho_cortado).replace(',', '.')),
         largo_cortado: parseFloat(String(largo_cortado).replace(',', '.')),
         id_maquina,
@@ -173,6 +203,7 @@ export default function Cortes() {
       alert(data.message || "Corte registrado exitosamente");
       setForm({
         id_lamina: "",
+        id_retazo: "",
         ancho_cortado: "",
         largo_cortado: "",
         id_maquina: "",
@@ -236,18 +267,20 @@ export default function Cortes() {
           >
             {/* Botón que abre modal para seleccionar lámina */}
             <div>
-              <button
-                type="button"
-                onClick={() => setShowLaminaModal(true)}
-                className="w-full text-left border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-emerald-500 bg-white"
-              >
+              <button type="button" onClick={() => setShowLaminaModal(true)} className="w-full text-left border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-emerald-500 bg-white">
                 {(() => {
+                  if (form.id_retazo) {
+                    const rz = retazos.find((r) => String(r.id) === String(form.id_retazo));
+                    if (rz) return `Retazo ID ${rz.id} - ${fmtMeasure(rz.largo)} x ${fmtMeasure(rz.ancho)} (orig: ${rz.id_lamina_original})`;
+                    return 'Retazo seleccionado';
+                  }
                   const l = laminas.find((x) => String(x.id) === String(form.id_lamina));
                   if (l) return 'ID ' + l.id + ' - ' + (l.tipo || `${fmtMeasure(l.largo)} x ${fmtMeasure(l.ancho)}`);
-                  return 'Selecciona una lámina';
+                  return 'Selecciona una lámina o retazo';
                 })()}
               </button>
               <input type="hidden" name="id_lamina" value={form.id_lamina} />
+              <input type="hidden" name="id_retazo" value={form.id_retazo} />
             </div>
 
             <input
@@ -284,32 +317,20 @@ export default function Cortes() {
                 </option>
               ))}
             </select>
-            {user && user.nombre ? (
-              <div>
-                <input
-                  type="text"
-                  value={user.nombre}
-                  readOnly
-                  className="border border-gray-300 rounded-md p-2 bg-gray-100"
-                />
-                <input type="hidden" name="id_usuario" value={form.id_usuario} />
-              </div>
-            ) : (
-              <select
-                name="id_usuario"
-                value={form.id_usuario}
-                onChange={handleChange}
-                className="border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-emerald-500"
-                required
-              >
-                <option value="">Selecciona usuario</option>
-                {usuariosList.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.nombre}
-                  </option>
-                ))}
-              </select>
-            )}
+            <select
+              name="id_usuario"
+              value={form.id_usuario}
+              onChange={handleChange}
+              className="border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-emerald-500"
+              required
+            >
+              <option value="">Selecciona usuario</option>
+              {usuariosList.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.nombre}
+                </option>
+              ))}
+            </select>
             <input
               type="date"
               name="fecha"
@@ -334,13 +355,19 @@ export default function Cortes() {
             <div className="absolute inset-0 bg-black opacity-50" onClick={() => setShowLaminaModal(false)} />
             <div className="relative bg-white w-11/12 max-w-3xl rounded-lg shadow-lg p-4 z-10">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-                <h3 className="text-lg font-semibold">Selecciona una lámina</h3>
+                <div className="flex items-center gap-4">
+                  <h3 className="text-lg font-semibold">Selecciona</h3>
+                  <div className="flex bg-gray-100 rounded overflow-hidden">
+                    <button type="button" onClick={() => setModalMode('laminas')} className={`px-3 py-1 ${modalMode==='laminas' ? 'bg-white font-semibold' : 'text-gray-600'}`}>Láminas</button>
+                    <button type="button" onClick={() => setModalMode('retazos')} className={`px-3 py-1 ${modalMode==='retazos' ? 'bg-white font-semibold' : 'text-gray-600'}`}>Retazos</button>
+                  </div>
+                </div>
                 <div className="flex items-center gap-2 w-full sm:w-auto">
                   <input
                     type="text"
                     value={laminaQuery}
                     onChange={(e) => setLaminaQuery(e.target.value)}
-                    placeholder="Buscar por ID, tipo, ancho, largo o stock"
+                    placeholder="Buscar por ID, tipo, ancho, largo, stock o retazo"
                     className="border border-gray-300 rounded-md p-2 w-full sm:w-80"
                   />
                   <button
@@ -355,33 +382,27 @@ export default function Cortes() {
               </div>
 
               <div className="max-h-72 overflow-auto">
-                {laminas.length === 0 ? (
-                  <p className="text-gray-500">No hay láminas disponibles.</p>
-                ) : (
-                  (() => {
+                {modalMode === 'laminas' ? (
+                  laminas.length === 0 ? (
+                    <p className="text-gray-500">No hay láminas disponibles.</p>
+                  ) : (() => {
                     const q = (laminaQuery || "").toString().trim().toLowerCase();
                     const filtered = laminas.filter((l) => {
                       if (!q) return true;
-                      const parts = [
-                        String(l.id),
-                        (l.tipo || "").toString(),
-                        String(l.ancho || ""),
-                        String(l.largo || ""),
-                        String(l.stock || "")
-                      ].join(" ").toLowerCase();
+                      const parts = [String(l.id), (l.tipo || "").toString(), String(l.ancho || ""), String(l.largo || ""), String(l.stock || "")].join(" ").toLowerCase();
                       return parts.includes(q);
                     });
 
-                    if (filtered.length === 0) {
-                      return <p className="text-gray-500">No se encontraron láminas para la búsqueda.</p>;
-                    }
+                    if (filtered.length === 0) return <p className="text-gray-500">No se encontraron láminas para la búsqueda.</p>;
 
                     return (
                       <table className="w-full table-auto">
                         <thead>
                           <tr className="text-left text-sm text-gray-600 border-b">
                             <th className="py-2">ID</th>
-                            <th className="py-2">Tipo / Dimensiones</th>
+                            <th className="py-2">Tipo</th>
+                            <th className="py-2">Ancho (m)</th>
+                            <th className="py-2">Largo (m)</th>
                             <th className="py-2">Stock</th>
                             <th className="py-2 text-right">Acción</th>
                           </tr>
@@ -390,19 +411,57 @@ export default function Cortes() {
                           {filtered.map((l) => (
                             <tr key={l.id} className="hover:bg-gray-50">
                               <td className="py-2">{l.id}</td>
-                              <td className="py-2">{l.tipo || `${fmtMeasure(l.largo)} x ${fmtMeasure(l.ancho)}`}</td>
+                              <td className="py-2">{l.tipo || '-'}</td>
+                              <td className="py-2">{l.ancho !== undefined && l.ancho !== null ? (Number.isNaN(Number(l.ancho)) ? '-' : Number(parseFloat(l.ancho).toFixed(1))) : '-'}</td>
+                              <td className="py-2">{l.largo !== undefined && l.largo !== null ? (Number.isNaN(Number(l.largo)) ? '-' : Number(parseFloat(l.largo).toFixed(1))) : '-'}</td>
                               <td className="py-2">{l.stock ?? '-'}</td>
                               <td className="py-2 text-right">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setForm((f) => ({ ...f, id_lamina: String(l.id) }));
-                                    setShowLaminaModal(false);
-                                  }}
-                                  className="bg-teal-600 text-white px-3 py-1 rounded hover:bg-teal-700"
-                                >
-                                  Seleccionar
-                                </button>
+                                <button type="button" onClick={() => { setForm((f) => ({ ...f, id_lamina: String(l.id), id_retazo: "" })); setShowLaminaModal(false); }} className="bg-teal-600 text-white px-3 py-1 rounded hover:bg-teal-700">Seleccionar</button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    );
+                  })()
+                ) : (
+                  // Mostrar retazos
+                  retazos.length === 0 ? (
+                    <p className="text-gray-500">No hay retazos disponibles.</p>
+                  ) : (() => {
+                    const q = (laminaQuery || "").toString().trim().toLowerCase();
+                    const filtered = retazos.filter((r) => {
+                      if (!q) return true;
+                      const parts = [String(r.id), String(r.id_lamina_original || ""), String(r.ancho || ""), String(r.largo || ""), String(r.id_maquina || "")].join(" ").toLowerCase();
+                      return parts.includes(q);
+                    });
+
+                    if (filtered.length === 0) return <p className="text-gray-500">No se encontraron retazos para la búsqueda.</p>;
+
+                    return (
+                      <table className="w-full table-auto">
+                        <thead>
+                          <tr className="text-left text-sm text-gray-600 border-b">
+                            <th className="py-2">ID</th>
+                            <th className="py-2">Lámina Orig.</th>
+                            <th className="py-2">Ancho (m)</th>
+                            <th className="py-2">Largo (m)</th>
+                            <th className="py-2">Stock</th>
+                            <th className="py-2">Máquina</th>
+                            <th className="py-2 text-right">Acción</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filtered.map((r) => (
+                            <tr key={r.id} className="hover:bg-gray-50">
+                              <td className="py-2">{(() => { const lam = laminas.find((x) => String(x.id) === String(r.id_lamina_original)); return lam ? (lam.tipo || `${fmtMeasure(lam.largo)} x ${fmtMeasure(lam.ancho)}`) : `Retazo ${r.id}` })()}</td>
+                              <td className="py-2">{r.id_lamina_original ?? '-'}</td>
+                              <td className="py-2">{r.ancho !== undefined && r.ancho !== null ? (Number.isNaN(Number(r.ancho)) ? '-' : Number(parseFloat(r.ancho).toFixed(1))) : '-'}</td>
+                              <td className="py-2">{r.largo !== undefined && r.largo !== null ? (Number.isNaN(Number(r.largo)) ? '-' : Number(parseFloat(r.largo).toFixed(1))) : '-'}</td>
+                              <td className="py-2">{r.stock !== undefined && r.stock !== null ? r.stock : '1'}</td>
+                              <td className="py-2">{(() => { const m = maquinas.find((x) => String(x.id) === String(r.id_maquina)); return m ? m.nombre : (r.id_maquina ?? '-'); })()}</td>
+                              <td className="py-2 text-right">
+                                <button type="button" onClick={() => { setForm((f) => ({ ...f, id_retazo: String(r.id), id_lamina: String(r.id_lamina_original || '') })); setShowLaminaModal(false); }} className="bg-teal-600 text-white px-3 py-1 rounded hover:bg-teal-700">Seleccionar retazo</button>
                               </td>
                             </tr>
                           ))}

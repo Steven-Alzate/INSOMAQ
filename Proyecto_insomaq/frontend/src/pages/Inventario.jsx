@@ -37,6 +37,19 @@ export default function Inventario() {
   };
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+  // Formatea un valor numérico a 1 decimal y devuelve string vacío si no es válido
+  const formatOneDecimal = (val) => {
+    if (val === undefined || val === null || val === "") return "";
+    const n = parseFloat(val);
+    if (Number.isNaN(n)) return "";
+    return String(Number(n.toFixed(1)));
+  };
+
+  const handleDecimalBlur = (e) => {
+    const { name, value } = e.target;
+    if (value === undefined || value === null || value === "") return;
+    setForm((prev) => ({ ...prev, [name]: formatOneDecimal(value) }));
+  };
   const handleFilterChange = (e) => setFilters({ ...filters, [e.target.name]: e.target.value });
   const clearFilters = () => setFilters({ largo: "", ancho: "", tipo: "" });
 
@@ -72,7 +85,13 @@ export default function Inventario() {
         await fetchTipos();
       }
 
-      const laminaData = { largo: form.largo, ancho: form.ancho, id_tipo, stock: form.stock ? Number(form.stock) : 0 };
+      // Normalizar a 1 decimal antes de enviar
+      const laminaData = {
+        largo: form.largo === "" || form.largo === null || form.largo === undefined ? null : Number(parseFloat(formatOneDecimal(form.largo))),
+        ancho: form.ancho === "" || form.ancho === null || form.ancho === undefined ? null : Number(parseFloat(formatOneDecimal(form.ancho))),
+        id_tipo,
+        stock: form.stock ? Number(form.stock) : 0
+      };
 
       const options = {
         method: editId ? "PUT" : "POST",
@@ -98,8 +117,8 @@ export default function Inventario() {
 
   const handleEdit = (lamina) => {
     setForm({
-      largo: lamina.largo,
-      ancho: lamina.ancho,
+      largo: lamina.largo !== undefined && lamina.largo !== null ? String(Number(parseFloat(lamina.largo).toFixed(1))) : "",
+      ancho: lamina.ancho !== undefined && lamina.ancho !== null ? String(Number(parseFloat(lamina.ancho).toFixed(1))) : "",
       tipo_lamina: lamina.tipo || "",
       stock: lamina.stock !== undefined && lamina.stock !== null ? String(lamina.stock) : "",
     });
@@ -131,12 +150,12 @@ export default function Inventario() {
 
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div className="relative">
-              <input type="number" name="largo" value={form.largo} onChange={handleChange} placeholder="Largo" disabled={!!editId} className="border border-gray-300 rounded-lg px-4 py-3 w-full focus:outline-none focus:ring-2 focus:ring-teal-500 pr-12" />
+              <input type="number" name="largo" value={form.largo} onChange={handleChange} onBlur={handleDecimalBlur} placeholder="Largo" disabled={!!editId} className="border border-gray-300 rounded-lg px-4 py-3 w-full focus:outline-none focus:ring-2 focus:ring-teal-500 pr-12" />
               <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm">m</span>
             </div>
 
             <div className="relative">
-              <input type="number" name="ancho" value={form.ancho} onChange={handleChange} placeholder="Ancho" disabled={!!editId} className="border border-gray-300 rounded-lg px-4 py-3 w-full focus:outline-none focus:ring-2 focus:ring-teal-500 pr-12" />
+              <input type="number" name="ancho" value={form.ancho} onChange={handleChange} onBlur={handleDecimalBlur} placeholder="Ancho" disabled={!!editId} className="border border-gray-300 rounded-lg px-4 py-3 w-full focus:outline-none focus:ring-2 focus:ring-teal-500 pr-12" />
               <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm">m</span>
             </div>
 

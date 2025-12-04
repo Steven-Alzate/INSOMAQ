@@ -133,6 +133,20 @@ exports.obtenerTodos = async (req, res) => {
   }
 };
 
+// Obtener todos los usuarios (público) - no requiere token
+exports.obtenerTodosPublic = async (req, res) => {
+  try {
+    const usuarios_data = await usuarios.findAll({
+      attributes: ['id', 'nombre', 'email', 'fecha']
+    });
+
+    res.status(200).json(usuarios_data);
+  } catch (err) {
+    console.error('Error al obtener usuarios (public):', err);
+    res.status(500).json({ error: 'Error al obtener los usuarios.' });
+  }
+};
+
 // Obtener un usuario por ID (protegido)
 exports.obtenerPorId = async (req, res) => {
   try {

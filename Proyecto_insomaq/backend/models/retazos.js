@@ -25,6 +25,11 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.DECIMAL(10,3),
       allowNull: true
     },
+    stock: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: 1
+    },
     id_maquina: {
       type: DataTypes.INTEGER,
       allowNull: true,

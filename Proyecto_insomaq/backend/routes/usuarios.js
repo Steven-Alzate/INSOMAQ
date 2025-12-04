@@ -11,6 +11,10 @@ router.post('/registrarse', usuariosController.registrarse);
 router.post('/iniciar-sesion', usuariosController.iniciarSesion);
 
 // GET - Obtener todos los usuarios (protegido)
+// GET - Obtener todos los usuarios (público)
+router.get('/public', usuariosController.obtenerTodosPublic);
+
+// GET - Obtener todos los usuarios (protegido)
 router.get('/', authenticateToken, usuariosController.obtenerTodos);
 
 // GET - Obtener un usuario por ID (protegido)

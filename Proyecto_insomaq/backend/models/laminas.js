@@ -14,11 +14,37 @@ module.exports = (sequelize, DataTypes) => {
     },
     ancho: {
       type: DataTypes.DECIMAL(10,3),
-      allowNull: true
+      allowNull: true,
+      get() {
+        const val = this.getDataValue('ancho');
+        if (val === null || val === undefined) return null;
+        const n = parseFloat(val);
+        if (Number.isNaN(n)) return null;
+        return Number(n.toFixed(1));
+      },
+      set(val) {
+        if (val === null || val === undefined) return this.setDataValue('ancho', null);
+        const n = parseFloat(val);
+        if (Number.isNaN(n)) return this.setDataValue('ancho', null);
+        this.setDataValue('ancho', Number(n.toFixed(1)));
+      }
     },
     largo: {
       type: DataTypes.DECIMAL(10,3),
-      allowNull: true
+      allowNull: true,
+      get() {
+        const val = this.getDataValue('largo');
+        if (val === null || val === undefined) return null;
+        const n = parseFloat(val);
+        if (Number.isNaN(n)) return null;
+        return Number(n.toFixed(1));
+      },
+      set(val) {
+        if (val === null || val === undefined) return this.setDataValue('largo', null);
+        const n = parseFloat(val);
+        if (Number.isNaN(n)) return this.setDataValue('largo', null);
+        this.setDataValue('largo', Number(n.toFixed(1)));
+      }
     },
     stock: {
       type: DataTypes.INTEGER,
@@ -59,7 +85,18 @@ module.exports = (sequelize, DataTypes) => {
     const updates = {};
     allowed.forEach((key) => {
       if (Object.prototype.hasOwnProperty.call(data, key)) {
-        updates[key] = data[key];
+        // Si se actualiza ancho/largo, normalizar a 1 decimal
+        if (key === 'ancho' || key === 'largo') {
+          const raw = data[key];
+          if (raw === null || raw === undefined) {
+            updates[key] = null;
+          } else {
+            const n = parseFloat(raw);
+            updates[key] = Number.isNaN(n) ? null : Number(n.toFixed(1));
+          }
+        } else {
+          updates[key] = data[key];
+        }
       }
     });
 

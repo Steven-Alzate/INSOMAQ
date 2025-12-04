@@ -3,7 +3,7 @@ const { retazos, laminas, cortes, maquinas } = require('../models');
 // Crear retazo
 exports.crear = async (req, res) => {
   try {
-    const { id_lamina_original, id_corte, ancho, largo, id_maquina, disponible } = req.body;
+    const { id_lamina_original, id_corte, ancho, largo, id_maquina, disponible, stock } = req.body;
 
     if (!id_lamina_original || !ancho || !largo || !id_maquina) {
       return res.status(400).json({ error: 'Los campos id_lamina_original, ancho, largo e id_maquina son requeridos.' });
@@ -15,7 +15,8 @@ exports.crear = async (req, res) => {
       ancho,
       largo,
       id_maquina,
-      disponible: disponible !== undefined ? disponible : true
+      disponible: disponible !== undefined ? disponible : true,
+      stock: stock !== undefined ? Number(stock) : 1
     });
 
     res.status(201).json({ message: 'Retazo creado exitosamente', data: nuevoRetazo });
@@ -46,6 +47,7 @@ exports.obtenerTodos = async (req, res) => {
       id_maquina: r.id_maquina,
       maquina: r.maquinas ? r.maquinas.nombre : null,
       disponible: r.disponible,
+      stock: r.stock,
       fecha: r.fecha,
       hora: r.hora,
       laminas: r.laminas,
@@ -84,6 +86,7 @@ exports.obtenerPorId = async (req, res) => {
       id_maquina: retazo.id_maquina,
       maquina: retazo.maquinas ? retazo.maquinas.nombre : null,
       disponible: retazo.disponible,
+      stock: retazo.stock,
       fecha: retazo.fecha,
       hora: retazo.hora,
       laminas: retazo.laminas,
@@ -101,7 +104,7 @@ exports.obtenerPorId = async (req, res) => {
 exports.actualizar = async (req, res) => {
   try {
     const { id } = req.params;
-    const { id_lamina_original, id_corte, ancho, largo, id_maquina, disponible } = req.body;
+    const { id_lamina_original, id_corte, ancho, largo, id_maquina, disponible, stock } = req.body;
 
     if (!id_lamina_original || !ancho || !largo || !id_maquina) {
       return res.status(400).json({ error: 'Los campos id_lamina_original, ancho, largo e id_maquina son requeridos.' });
@@ -118,7 +121,8 @@ exports.actualizar = async (req, res) => {
       ancho,
       largo,
       id_maquina,
-      disponible: disponible !== undefined ? disponible : retazo.disponible
+      disponible: disponible !== undefined ? disponible : retazo.disponible,
+      stock: stock !== undefined ? Number(stock) : retazo.stock
     });
 
     res.status(200).json({ message: 'Retazo actualizado exitosamente', data: retazo });

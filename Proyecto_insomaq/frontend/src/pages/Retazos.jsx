@@ -11,9 +11,13 @@ export default function Retazos() {
     ancho: "",
     id_maquina: "",
     fecha: "",
+    stock: "",
   });
 
   const [editId, setEditId] = useState(null);
+  const [filters, setFilters] = useState({ id_lamina_original: "", id_maquina: "", fecha_from: "", fecha_to: "" });
+  const [showLaminaModal, setShowLaminaModal] = useState(false);
+  const [laminaQuery, setLaminaQuery] = useState("");
   const API_URL = "http://localhost:4000/retazos";
 
   const fmtMeasure = (v) => {
@@ -29,6 +33,16 @@ export default function Retazos() {
     fetchLaminas();
     fetchMaquinas();
   }, []);
+
+  
+
+  const handleFilterChange = (e) => {
+    setFilters({ ...filters, [e.target.name]: e.target.value });
+  };
+
+  const clearFilters = () => {
+    setFilters({ id_lamina_original: "", id_maquina: "", fecha_from: "", fecha_to: "" });
+  };
 
   const fetchRetazos = async () => {
     try {
@@ -83,6 +97,8 @@ export default function Retazos() {
         largo: parseFloat(String(largo).replace(',', '.')),
         ancho: parseFloat(String(ancho).replace(',', '.'))
       };
+      // incluir stock si existe
+      if (form.stock !== undefined && form.stock !== "") payload.stock = Number(form.stock);
       // Si el frontend usa 'fecha' mapeamos a lo que el backend espera (campo fecha)
       const options = {
         method: editId ? "PUT" : "POST",
@@ -111,6 +127,7 @@ export default function Retazos() {
       largo: retazo.largo,
       ancho: retazo.ancho,
       id_maquina: retazo.id_maquina,
+      stock: retazo.stock !== undefined && retazo.stock !== null ? String(retazo.stock) : "",
       fecha: retazo.fecha ? retazo.fecha.split("T")[0] : "",
     });
     setEditId(retazo.id);
@@ -147,20 +164,15 @@ export default function Retazos() {
           <form onSubmit={handleSubmit} className="flex flex-wrap items-center gap-4">
 
             {/* Lámina Original */}
-            <div className="flex-1 min-w-[180px]">
-              <select
-                name="id_lamina_original"
-                value={form.id_lamina_original}
-                onChange={handleChange}
-                className="border border-gray-300 rounded-lg px-4 py-3 w-full focus:outline-none focus:ring-2 focus:ring-teal-500"
-              >
-                <option value="">Selecciona lámina</option>
-                {laminas.map((lamina) => (
-                  <option key={lamina.id ?? `lam-${Math.random()}`} value={lamina.id}>
-                    {lamina.tipo ?? "Sin tipo"} - {fmtMeasure(lamina.largo)}m x {fmtMeasure(lamina.ancho)}m
-                  </option>
-                ))}
-              </select>
+            <div className="flex-1 min-w-[140px]">
+              <button type="button" onClick={() => setShowLaminaModal(true)} className="border border-gray-300 rounded-lg px-4 py-3 w-full text-left bg-white">
+                {(() => {
+                  const l = laminas.find((x) => String(x.id) === String(form.id_lamina_original));
+                  if (l) return `${l.tipo ?? 'Sin tipo'} - ${fmtMeasure(l.largo)}m x ${fmtMeasure(l.ancho)}m`;
+                  return 'Selecciona lámina';
+                })()}
+              </button>
+              <input type="hidden" name="id_lamina_original" value={form.id_lamina_original} />
             </div>
 
             {/* Largo */}
@@ -189,6 +201,18 @@ export default function Retazos() {
                 className="border border-gray-300 rounded-lg px-4 py-3 w-full focus:outline-none focus:ring-2 focus:ring-teal-500 pr-12"
               />
               <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm">m</span>
+            </div>
+
+            {/* Stock */}
+            <div className="relative flex-1 min-w-[90px]">
+              <input
+                type="number"
+                name="stock"
+                value={form.stock}
+                onChange={handleChange}
+                placeholder="Stock"
+                className="border border-gray-300 rounded-lg px-4 py-3 w-full focus:outline-none focus:ring-2 focus:ring-teal-500"
+              />
             </div>
 
             {/* Máquina */}
@@ -231,11 +255,140 @@ export default function Retazos() {
           </form>
         </section>
 
+        {/* Modal de selección de lámina/retazo (copiado de Cortes) */}
+        {showLaminaModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black opacity-50" onClick={() => setShowLaminaModal(false)} />
+            <div className="relative bg-white w-11/12 max-w-3xl rounded-lg shadow-lg p-4 z-10">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                <div className="flex items-center gap-4">
+                    <h3 className="text-lg font-semibold">Selecciona lámina</h3>
+                  </div>
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <input
+                    type="text"
+                    value={laminaQuery}
+                    onChange={(e) => setLaminaQuery(e.target.value)}
+                    placeholder="Buscar por ID, tipo, ancho, largo, stock o retazo"
+                    className="border border-gray-300 rounded-md p-2 w-full sm:w-80"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowLaminaModal(false)}
+                    className="text-gray-600 hover:text-gray-800 text-2xl leading-none"
+                    aria-label="Cerrar"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+
+              <div className="max-h-72 overflow-auto">
+                {laminas.length === 0 ? (
+                  <p className="text-gray-500">No hay láminas disponibles.</p>
+                ) : (() => {
+                  const q = (laminaQuery || "").toString().trim().toLowerCase();
+                  const filtered = laminas.filter((l) => {
+                    if (!q) return true;
+                    const parts = [String(l.id), (l.tipo || ""), String(l.ancho || ""), String(l.largo || ""), String(l.stock || "")].join(" ").toLowerCase();
+                    return parts.includes(q);
+                  });
+
+                  if (filtered.length === 0) return <p className="text-gray-500">No se encontraron láminas para la búsqueda.</p>;
+
+                  return (
+                    <table className="w-full table-auto">
+                      <thead>
+                        <tr className="text-left text-sm text-gray-600 border-b">
+                          <th className="py-2">ID</th>
+                          <th className="py-2">Tipo</th>
+                          <th className="py-2">Ancho (m)</th>
+                          <th className="py-2">Largo (m)</th>
+                          <th className="py-2">Stock</th>
+                          <th className="py-2 text-right">Acción</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filtered.map((l) => (
+                          <tr key={l.id} className="hover:bg-gray-50">
+                            <td className="py-2">{l.id}</td>
+                            <td className="py-2">{l.tipo || '-'}</td>
+                            <td className="py-2">{l.ancho !== undefined && l.ancho !== null ? (Number.isNaN(Number(l.ancho)) ? '-' : Number(parseFloat(l.ancho).toFixed(1))) : '-'}</td>
+                            <td className="py-2">{l.largo !== undefined && l.largo !== null ? (Number.isNaN(Number(l.largo)) ? '-' : Number(parseFloat(l.largo).toFixed(1))) : '-'}</td>
+                            <td className="py-2">{l.stock ?? '-'}</td>
+                            <td className="py-2 text-right">
+                              <button type="button" onClick={() => { setForm((f) => ({ ...f, id_lamina_original: String(l.id) })); setShowLaminaModal(false); }} className="bg-teal-600 text-white px-3 py-1 rounded hover:bg-teal-700">Seleccionar</button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  );
+                })()}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Tabla */}
         <section className="bg-white p-8 rounded-2xl shadow-lg overflow-x-auto">
-          <h2 className="text-[#2a3f54] text-2xl font-semibold mb-6 border-b pb-2">
-            Lista de Retazos
-          </h2>
+          <div className="flex flex-col gap-4 mb-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-[#2a3f54] text-2xl font-semibold">Lista de Retazos</h2>
+            </div>
+
+            <div className="flex flex-col md:flex-row gap-3 items-center">
+              <select
+                name="id_lamina_original"
+                value={filters.id_lamina_original}
+                onChange={handleFilterChange}
+                className="border border-gray-300 rounded-lg px-3 py-2 w-full md:w-1/4"
+              >
+                <option value="">Todas las láminas</option>
+                {laminas.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {`ID ${l.id} - ${l.tipo || `${fmtMeasure(l.largo)}x${fmtMeasure(l.ancho)}`}`}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                name="id_maquina"
+                value={filters.id_maquina}
+                onChange={handleFilterChange}
+                className="border border-gray-300 rounded-lg px-3 py-2 w-full md:w-1/4"
+              >
+                <option value="">Todas las máquinas</option>
+                {maquinas.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.nombre || `ID ${m.id}`}
+                  </option>
+                ))}
+              </select>
+
+              <input
+                type="date"
+                name="fecha_from"
+                value={filters.fecha_from}
+                onChange={handleFilterChange}
+                className="border border-gray-300 rounded-lg px-3 py-2 w-full md:w-1/6"
+                placeholder="Desde"
+              />
+
+              <input
+                type="date"
+                name="fecha_to"
+                value={filters.fecha_to}
+                onChange={handleFilterChange}
+                className="border border-gray-300 rounded-lg px-3 py-2 w-full md:w-1/6"
+                placeholder="Hasta"
+              />
+
+              <div className="w-full md:w-auto">
+                <button onClick={clearFilters} type="button" className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded">Limpiar filtros</button>
+              </div>
+            </div>
+          </div>
 
           <table className="min-w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
             <thead className="bg-gray-200 text-gray-800 uppercase text-left">
@@ -244,6 +397,7 @@ export default function Retazos() {
                 <th className="p-3 border-b border-gray-300">Lámina Original</th>
                 <th className="p-3 border-b border-gray-300">Largo</th>
                 <th className="p-3 border-b border-gray-300">Ancho</th>
+                <th className="p-3 border-b border-gray-300">Stock</th>
                 <th className="p-3 border-b border-gray-300">Máquina</th>
                 <th className="p-3 border-b border-gray-300">Fecha Corte</th>
                 <th className="p-3 border-b border-gray-300">Acciones</th>
@@ -251,8 +405,27 @@ export default function Retazos() {
             </thead>
 
             <tbody>
-              {retazos.length > 0 ? (
-                retazos.map((retazo) => (
+              {(() => {
+                const filteredByFilters = retazos.filter((r) => {
+                  const matchLamina = !filters.id_lamina_original || String(r.id_lamina_original) === String(filters.id_lamina_original);
+                  const matchMaquina = !filters.id_maquina || String(r.id_maquina) === String(filters.id_maquina);
+                  const fechaVal = r.fecha ? r.fecha.split("T")[0] : (r.fecha_corte ? r.fecha_corte.split("T")[0] : null);
+                  const matchFechaFrom = !filters.fecha_from || (fechaVal && fechaVal >= filters.fecha_from);
+                  const matchFechaTo = !filters.fecha_to || (fechaVal && fechaVal <= filters.fecha_to);
+                  return matchLamina && matchMaquina && matchFechaFrom && matchFechaTo;
+                });
+
+                if (filteredByFilters.length === 0) {
+                  return (
+                    <tr>
+                      <td colSpan="8" className="text-center text-gray-500 py-6 italic">
+                        No hay retazos que coincidan con los filtros
+                      </td>
+                    </tr>
+                  );
+                }
+
+                return filteredByFilters.map((retazo) => (
                   <tr key={retazo.id} className="hover:bg-gray-50 transition">
                     <td className="p-3">{retazo.id}</td>
                     <td className="p-3">
@@ -260,6 +433,7 @@ export default function Retazos() {
                     </td>
                     <td className="p-3">{fmtMeasure(retazo.largo)} m</td>
                     <td className="p-3">{fmtMeasure(retazo.ancho)} m</td>
+                    <td className="p-3">{retazo.stock !== undefined && retazo.stock !== null ? retazo.stock : '1'}</td>
                     <td className="p-3">{retazo.maquina || (maquinas.find((m) => m.id === retazo.id_maquina)?.nombre) || retazo.id_maquina}</td>
                     <td className="p-3">{retazo.fecha ? retazo.fecha.split("T")[0] : (retazo.fecha_corte ? retazo.fecha_corte.split("T")[0] : "-")}</td>
                     <td className="p-3 flex gap-2">
@@ -277,14 +451,8 @@ export default function Retazos() {
                       </button>
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="7" className="text-center text-gray-500 py-6 italic">
-                    No hay retazos registrados
-                  </td>
-                </tr>
-              )}
+                ));
+              })()}
             </tbody>
           </table>
         </section>

@@ -4,103 +4,129 @@ const { cortes, laminas, maquinas, usuarios, retazos } = db;
 // Crear corte
 exports.crear = async (req, res) => {
   try {
-    const { id_lamina, ancho_cortado, largo_cortado, id_maquina, id_usuario } = req.body;
+    const { id_lamina, id_retazo, ancho_cortado, largo_cortado, id_maquina, id_usuario } = req.body;
 
-    if (!id_lamina || !ancho_cortado || !largo_cortado || !id_maquina || !id_usuario) {
-      return res.status(400).json({ error: 'Todos los campos son requeridos.' });
+    if ((!id_lamina && !id_retazo) || !ancho_cortado || !largo_cortado || !id_maquina || !id_usuario) {
+      return res.status(400).json({ error: 'Todos los campos son requeridos. Se necesita id_lamina o id_retazo.' });
     }
-    // Usar transacción: crear corte y decrementar stock de la lámina
+
+    // Si viene id_retazo, cortamos desde retazo. Si no, desde lámina.
     const result = await db.sequelize.transaction(async (t) => {
-      // Obtener la lámina con lock FOR UPDATE
-      const lam = await laminas.findByPk(id_lamina, { transaction: t, lock: t.LOCK.UPDATE });
-      if (!lam) {
-        throw { status: 404, message: 'Lámina no encontrada.' };
-      }
+      if (id_retazo) {
+        // Cortar desde retazo
+        const rz = await retazos.findByPk(id_retazo, { transaction: t, lock: t.LOCK.UPDATE });
+        if (!rz) throw { status: 404, message: 'Retazo no encontrado.' };
+        if (!rz.disponible) throw { status: 400, message: 'Retazo no disponible.' };
 
-      // Verificar stock disponible
-      const currentStock = Number(lam.stock) || 0;
-      if (currentStock <= 0) {
-        throw { status: 400, message: 'No hay stock suficiente en la lámina seleccionada.' };
-      }
-
-      // Verificar que las medidas solicitadas no superen las dimensiones de la lámina
-      const anchoLamina = Number(lam.ancho) || 0;
-      const largoLamina = Number(lam.largo) || 0;
-      if (Number(ancho_cortado) > anchoLamina || Number(largo_cortado) > largoLamina) {
-        throw { status: 400, message: 'Las medidas solicitadas superan las dimensiones de la lámina seleccionada.' };
-      }
-
-      // Crear el corte
-      const nuevoCorte = await cortes.create({
-        id_lamina,
-        ancho_cortado,
-        largo_cortado,
-        id_maquina,
-        id_usuario
-      }, { transaction: t });
-
-      // Si hay sobrante de la lámina tras el corte, crear retazos.
-      // Generamos candidatos y eliminamos duplicados antes de insertar:
-      const anchoLaminaNum = Number(lam.ancho) || 0;
-      const largoLaminaNum = Number(lam.largo) || 0;
-      const anchoCortadoNum = Number(ancho_cortado) || 0;
-      const largoCortadoNum = Number(largo_cortado) || 0;
-
-      const candidates = [];
-
-      // Retazo a la derecha del corte: ancho = lam.ancho - ancho_cortado, largo = largo_cortado
-      const rightAncho = anchoLaminaNum - anchoCortadoNum;
-      if (rightAncho > 0 && largoCortadoNum > 0) {
-        candidates.push({ ancho: rightAncho, largo: largoCortadoNum });
-      }
-
-      // Retazo debajo del corte: ancho = lam.ancho - ancho_cortado (sobrante), largo = lam.largo - largo_cortado
-      const bottomAncho = anchoLaminaNum - anchoCortadoNum;
-      const bottomLargo = largoLaminaNum - largoCortadoNum;
-      if (bottomLargo > 0 && bottomAncho > 0) {
-        candidates.push({ ancho: bottomAncho, largo: bottomLargo });
-      }
-
-      // Eliminar duplicados en candidatos y elegir sólo el retazo más útil.
-      const seen = new Set();
-      const unique = [];
-      for (const c of candidates) {
-        const key = `${Number(c.ancho).toFixed(6)}_${Number(c.largo).toFixed(6)}`;
-        if (!seen.has(key)) {
-          seen.add(key);
-          unique.push(c);
-        }
-      }
-
-      // Si hay más de un candidato, elegir el de mayor área (ancho * largo)
-      if (unique.length > 0) {
-        let chosen = unique[0];
-        if (unique.length > 1) {
-          chosen = unique.reduce((max, cur) => {
-            const areaCur = Number(cur.ancho) * Number(cur.largo);
-            const areaMax = Number(max.ancho) * Number(max.largo);
-            return areaCur > areaMax ? cur : max;
-          }, unique[0]);
+        const anchoRetazoNum = Number(rz.ancho) || 0;
+        const largoRetazoNum = Number(rz.largo) || 0;
+        if (Number(ancho_cortado) > anchoRetazoNum || Number(largo_cortado) > largoRetazoNum) {
+          throw { status: 400, message: 'Las medidas solicitadas superan las dimensiones del retazo seleccionado.' };
         }
 
-        await retazos.create({
-          id_lamina_original: lam.id,
-          id_corte: nuevoCorte.id,
-          ancho: chosen.ancho,
-          largo: chosen.largo,
-          id_maquina: id_maquina,
-          disponible: true
+        // Crear corte vinculando la lámina original (para mantener compatibilidad)
+        const nuevoCorte = await cortes.create({
+          id_lamina: rz.id_lamina_original,
+          ancho_cortado,
+          largo_cortado,
+          id_maquina,
+          id_usuario
         }, { transaction: t });
+
+        // Marcar el retazo original como no disponible y vincular al corte
+        rz.disponible = false;
+        rz.id_corte = nuevoCorte.id;
+        await rz.save({ transaction: t });
+
+        // Generar posibles retazos sobrantes a partir del retazo original
+        const candidates = [];
+        const rightAncho = anchoRetazoNum - Number(ancho_cortado);
+        if (rightAncho > 0 && Number(largo_cortado) > 0) candidates.push({ ancho: rightAncho, largo: Number(largo_cortado) });
+        const bottomAncho = anchoRetazoNum - Number(ancho_cortado);
+        const bottomLargo = largoRetazoNum - Number(largo_cortado);
+        if (bottomLargo > 0 && bottomAncho > 0) candidates.push({ ancho: bottomAncho, largo: bottomLargo });
+
+        const seen = new Set();
+        const unique = [];
+        for (const c of candidates) {
+          const key = `${Number(c.ancho).toFixed(6)}_${Number(c.largo).toFixed(6)}`;
+          if (!seen.has(key)) { seen.add(key); unique.push(c); }
+        }
+
+        if (unique.length > 0) {
+          let chosen = unique[0];
+          if (unique.length > 1) {
+            chosen = unique.reduce((max, cur) => {
+              const areaCur = Number(cur.ancho) * Number(cur.largo);
+              const areaMax = Number(max.ancho) * Number(max.largo);
+              return areaCur > areaMax ? cur : max;
+            }, unique[0]);
+          }
+
+          await retazos.create({
+            id_lamina_original: rz.id_lamina_original,
+            id_corte: nuevoCorte.id,
+            ancho: chosen.ancho,
+            largo: chosen.largo,
+            id_maquina: id_maquina,
+            disponible: true
+          }, { transaction: t });
+        }
+
+        return { nuevoCorte };
+      } else {
+        // Cortar desde lámina (comportamiento previo)
+        const lam = await laminas.findByPk(id_lamina, { transaction: t, lock: t.LOCK.UPDATE });
+        if (!lam) throw { status: 404, message: 'Lámina no encontrada.' };
+
+        const currentStock = Number(lam.stock) || 0;
+        if (currentStock <= 0) throw { status: 400, message: 'No hay stock suficiente en la lámina seleccionada.' };
+
+        const anchoLaminaNum = Number(lam.ancho) || 0;
+        const largoLaminaNum = Number(lam.largo) || 0;
+        if (Number(ancho_cortado) > anchoLaminaNum || Number(largo_cortado) > largoLaminaNum) {
+          throw { status: 400, message: 'Las medidas solicitadas superan las dimensiones de la lámina seleccionada.' };
+        }
+
+        const nuevoCorte = await cortes.create({ id_lamina, ancho_cortado, largo_cortado, id_maquina, id_usuario }, { transaction: t });
+
+        const candidates = [];
+        const anchoCortadoNum = Number(ancho_cortado) || 0;
+        const largoCortadoNum = Number(largo_cortado) || 0;
+        const rightAncho = anchoLaminaNum - anchoCortadoNum;
+        if (rightAncho > 0 && largoCortadoNum > 0) candidates.push({ ancho: rightAncho, largo: largoCortadoNum });
+        const bottomAncho = anchoLaminaNum - anchoCortadoNum;
+        const bottomLargo = largoLaminaNum - largoCortadoNum;
+        if (bottomLargo > 0 && bottomAncho > 0) candidates.push({ ancho: bottomAncho, largo: bottomLargo });
+
+        const seen = new Set();
+        const unique = [];
+        for (const c of candidates) {
+          const key = `${Number(c.ancho).toFixed(6)}_${Number(c.largo).toFixed(6)}`;
+          if (!seen.has(key)) { seen.add(key); unique.push(c); }
+        }
+
+        if (unique.length > 0) {
+          let chosen = unique[0];
+          if (unique.length > 1) {
+            chosen = unique.reduce((max, cur) => {
+              const areaCur = Number(cur.ancho) * Number(cur.largo);
+              const areaMax = Number(max.ancho) * Number(max.largo);
+              return areaCur > areaMax ? cur : max;
+            }, unique[0]);
+          }
+
+          await retazos.create({ id_lamina_original: lam.id, id_corte: nuevoCorte.id, ancho: chosen.ancho, largo: chosen.largo, id_maquina: id_maquina, disponible: true }, { transaction: t });
+        }
+
+        lam.stock = currentStock - 1;
+        await lam.save({ transaction: t });
+
+        return { nuevoCorte, lam };
       }
-
-      // Decrementar stock en 1 unidad (ajustable si se define otra regla)
-      lam.stock = currentStock - 1;
-      await lam.save({ transaction: t });
-
-      return { nuevoCorte, lam };
     });
 
-    res.status(201).json({ message: 'Corte creado exitosamente', data: result.nuevoCorte });
+    res.status(201).json({ message: 'Corte creado exitosamente', data: result.nuevoCorte || result.nuevoCorte });
   } catch (err) {
     console.error('Error al crear corte:', err);
     if (err && err.status && err.message) {
