@@ -38,8 +38,7 @@ export default function Cortes() {
     if (v === null || v === undefined || v === "") return "-";
     const n = Number(String(v).replace(',', '.'));
     if (Number.isNaN(n)) return String(v);
-    const rounded = Math.round(n * 1000) / 1000;
-    return Number.isInteger(rounded) ? String(rounded) : String(rounded);
+    return Number(n.toFixed(2));
   };
 
   useEffect(() => {
@@ -249,7 +248,7 @@ export default function Cortes() {
     <div className="min-h-screen bg-gradient-to-b from-gray-100 to-gray-200 flex flex-col">
       <header className="bg-[#2a3f54] text-white py-5 shadow-lg">
       <h1 className="text-3xl font-semibold text-center">
-        Inventario de Cortes
+        INVENTARIO DE CORTES
       </h1>
       </header>
 
@@ -263,90 +262,114 @@ export default function Cortes() {
 
           <form
             onSubmit={handleSubmit}
-            className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-3"
+            className="flex flex-wrap items-center gap-4"
           >
             {/* Botón que abre modal para seleccionar lámina */}
-            <div>
-              <button type="button" onClick={() => setShowLaminaModal(true)} className="w-full text-left border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-emerald-500 bg-white">
+            <div className="flex-1 min-w-[200px]">
+              <button 
+                type="button" 
+                onClick={() => setShowLaminaModal(true)} 
+                className="w-full text-left border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 bg-white hover:bg-gray-50 transition text-sm"
+              >
                 {(() => {
                   if (form.id_retazo) {
                     const rz = retazos.find((r) => String(r.id) === String(form.id_retazo));
-                    if (rz) return `Retazo ID ${rz.id} - ${fmtMeasure(rz.largo)} x ${fmtMeasure(rz.ancho)} (orig: ${rz.id_lamina_original})`;
+                    if (rz) return `Retazo ID ${rz.id} - ${fmtMeasure(rz.largo)} x ${fmtMeasure(rz.ancho)}`;
                     return 'Retazo seleccionado';
                   }
                   const l = laminas.find((x) => String(x.id) === String(form.id_lamina));
                   if (l) return 'ID ' + l.id + ' - ' + (l.tipo || `${fmtMeasure(l.largo)} x ${fmtMeasure(l.ancho)}`);
-                  return 'Selecciona una lámina o retazo';
+                  return 'Selecciona lámina/retazo';
                 })()}
               </button>
               <input type="hidden" name="id_lamina" value={form.id_lamina} />
               <input type="hidden" name="id_retazo" value={form.id_retazo} />
             </div>
 
-            <input
-              type="number"
-              step="0.01"
-              name="ancho_cortado"
-              value={form.ancho_cortado}
-              onChange={handleChange}
-              placeholder="Ancho (m)"
-              className="border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-emerald-500"
-              required
-            />
-            <input
-              type="number"
-              step="0.01"
-              name="largo_cortado"
-              value={form.largo_cortado}
-              onChange={handleChange}
-              placeholder="Largo (m)"
-              className="border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-emerald-500"
-              required
-            />
-            <select
-              name="id_maquina"
-              value={form.id_maquina}
-              onChange={handleChange}
-              className="border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-emerald-500"
-              required
-            >
-              <option value="">Selecciona máquina</option>
-              {maquinas.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.nombre || `ID ${m.id}`}
-                </option>
-              ))}
-            </select>
-            <select
-              name="id_usuario"
-              value={form.id_usuario}
-              onChange={handleChange}
-              className="border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-emerald-500"
-              required
-            >
-              <option value="">Selecciona usuario</option>
-              {usuariosList.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.nombre}
-                </option>
-              ))}
-            </select>
-            <input
-              type="date"
-              name="fecha"
-              value={form.fecha}
-              onChange={handleChange}
-              className="border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-emerald-500"
-              required
-            />
+            {/* Ancho cortado */}
+            <div className="flex-1 min-w-[90px]">
+              <input
+                type="number"
+                step="0.01"
+                name="ancho_cortado"
+                value={form.ancho_cortado}
+                onChange={handleChange}
+                placeholder="Ancho"
+                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 text-sm"
+                required
+              />
+            </div>
 
-            <button
-              type="submit"
-              className="col-span-full lg:col-span-1 bg-teal-600 text-white py-2 rounded-md font-semibold hover:bg-blue-700 transition"
-            >
-              {editId ? "Actualizar" : "Agregar"}
-            </button>
+            {/* Largo cortado */}
+            <div className="flex-1 min-w-[90px]">
+              <input
+                type="number"
+                step="0.01"
+                name="largo_cortado"
+                value={form.largo_cortado}
+                onChange={handleChange}
+                placeholder="Largo"
+                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 text-sm"
+                required
+              />
+            </div>
+
+            {/* Máquina */}
+            <div className="flex-1 min-w-[140px]">
+              <select
+                name="id_maquina"
+                value={form.id_maquina}
+                onChange={handleChange}
+                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 text-sm"
+                required
+              >
+                <option value="">Máquina</option>
+                {maquinas.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.nombre || `ID ${m.id}`}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Usuario */}
+            <div className="flex-1 min-w-[140px]">
+              <select
+                name="id_usuario"
+                value={form.id_usuario}
+                onChange={handleChange}
+                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 text-sm"
+                required
+              >
+                <option value="">Usuario</option>
+                {usuariosList.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Fecha */}
+            <div className="flex-1 min-w-[140px]">
+              <input
+                type="date"
+                name="fecha"
+                value={form.fecha}
+                onChange={handleChange}
+                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 text-sm"
+                required
+              />
+            </div>
           </form>
+
+          <button
+            type="submit"
+            onClick={handleSubmit}
+            className="w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold px-6 py-3 rounded-lg shadow-md transition-all mt-4"
+          >
+            {editId ? "Actualizar Corte" : "Agregar Corte"}
+          </button>
         </div>
 
         {/* Modal de selección de lámina */}
@@ -412,8 +435,8 @@ export default function Cortes() {
                             <tr key={l.id} className="hover:bg-gray-50">
                               <td className="py-2">{l.id}</td>
                               <td className="py-2">{l.tipo || '-'}</td>
-                              <td className="py-2">{l.ancho !== undefined && l.ancho !== null ? (Number.isNaN(Number(l.ancho)) ? '-' : Number(parseFloat(l.ancho).toFixed(1))) : '-'}</td>
-                              <td className="py-2">{l.largo !== undefined && l.largo !== null ? (Number.isNaN(Number(l.largo)) ? '-' : Number(parseFloat(l.largo).toFixed(1))) : '-'}</td>
+                              <td className="py-2">{l.ancho !== undefined && l.ancho !== null ? (Number.isNaN(Number(l.ancho)) ? '-' : Number(parseFloat(l.ancho).toFixed(2))) : '-'}</td>
+                              <td className="py-2">{l.largo !== undefined && l.largo !== null ? (Number.isNaN(Number(l.largo)) ? '-' : Number(parseFloat(l.largo).toFixed(2))) : '-'}</td>
                               <td className="py-2">{l.stock ?? '-'}</td>
                               <td className="py-2 text-right">
                                 <button type="button" onClick={() => { setForm((f) => ({ ...f, id_lamina: String(l.id), id_retazo: "" })); setShowLaminaModal(false); }} className="bg-teal-600 text-white px-3 py-1 rounded hover:bg-teal-700">Seleccionar</button>

@@ -65,3 +65,8 @@ export const obtenerUsuarioPorId = (id) => apiCall(`/usuarios/${id}`);
 export const actualizarUsuario = (id, body) => apiCall(`/usuarios/${id}`, 'PUT', body);
 export const cambiarContrasena = (id, body) => apiCall(`/usuarios/${id}/cambiar-contrasena`, 'PUT', body);
 export const eliminarUsuario = (id) => apiCall(`/usuarios/${id}`, 'DELETE');
+
+// ===== ALERTAS =====
+export const obtenerAlertasLowStock = (threshold) => apiCall(`/alertas/low-stock${threshold ? `?threshold=${threshold}` : ''}`);
+export const obtenerAlertas = () => apiCall('/alertas');
+export const marcarAlertaLeida = (id) => apiCall(`/alertas/${id}/leer`, 'POST');

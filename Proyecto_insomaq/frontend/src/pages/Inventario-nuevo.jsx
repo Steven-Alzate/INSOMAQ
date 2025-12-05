@@ -93,7 +93,7 @@ export default function Inventario() {
     <div className="min-h-screen bg-gradient-to-b from-gray-100 to-gray-200 flex flex-col">
       <header className="bg-[#2a3f54] text-white py-5 shadow-lg">
         <h1 className="text-3xl font-semibold text-center">
-          Inventario de Láminas
+          INVENTARIO DE LÁMINAS
         </h1>
       </header>
 

@@ -15,9 +15,9 @@ export default function Header() {
 };
 
   return (
-    <header className="bg-black text-white p-4">
+    <header className="bg-[rgb(8_145_178)] text-white p-4">
       <div className="flex items-center w-full">
-        <span className="font-bold text-xl mr-6">Insomaq</span>
+        <span className="font-bold text-xl mr-6">INSOMAQ</span>
 
         <button
           onClick={() => setMenuOpen(!menuOpen)}
@@ -31,14 +31,14 @@ export default function Header() {
         <nav
           className={`${
             menuOpen ? "block" : "hidden"
-          } absolute top-full left-0 w-full bg-black md:static md:flex md:flex-row md:items-center md:space-x-6 md:w-auto text-sm`}
+          } absolute top-full left-0 w-full bg-[rgb(8_145_178)] md:static md:flex md:flex-row md:items-center md:space-x-6 md:w-auto text-sm`}
         >
-          <Link to="/home" className="block px-4 py-2 md:px-0 hover:text-cyan-500">Inicio</Link>
-          <Link to="/Cortes" className="block px-4 py-2 md:px-0 hover:text-cyan-500">Cortes</Link>
-          <Link to="/retazos" className="block px-4 py-2 md:px-0 hover:text-cyan-500">Retazos</Link>
-          <Link to="/inventario" className="block px-4 py-2 md:px-0 hover:text-cyan-500">Láminas</Link>
-          <Link to="/alertas" className="block px-4 py-2 md:px-0 hover:text-cyan-500">Alertas</Link>
-          <Link to="/maquinas" className="block px-4 py-2 md:px-0 hover:text-cyan-500">Maquinas</Link>
+          <Link to="/home" className="block px-4 py-2 md:px-0 hover:text-cyan-500">INICIO</Link>
+          <Link to="/Cortes" className="block px-4 py-2 md:px-0 hover:text-cyan-500">CORTES</Link>
+          <Link to="/retazos" className="block px-4 py-2 md:px-0 hover:text-cyan-500">RETAZOS</Link>
+          <Link to="/inventario" className="block px-4 py-2 md:px-0 hover:text-cyan-500">LÁMINAS</Link>
+          <Link to="/alertas" className="block px-4 py-2 md:px-0 hover:text-cyan-500">ALERTAS</Link>
+          <Link to="/maquinas" className="block px-4 py-2 md:px-0 hover:text-cyan-500">MÁQUINAS</Link>
 
         </nav>
 

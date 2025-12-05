@@ -11,14 +11,14 @@ exports.crear = async (req, res) => {
       });
     }
 
-    // Normalizar ancho/largo a 1 decimal (evita respuestas como 20.500)
+    // No redondear, pasar valores directos
     const anchoNorm = (() => {
       const n = parseFloat(ancho);
-      return Number.isNaN(n) ? null : Number(n.toFixed(1));
+      return Number.isNaN(n) ? null : n;
     })();
     const largoNorm = (() => {
       const n = parseFloat(largo);
-      return Number.isNaN(n) ? null : Number(n.toFixed(1));
+      return Number.isNaN(n) ? null : n;
     })();
 
     // ---------------------------
@@ -143,14 +143,14 @@ exports.actualizar = async (req, res) => {
       return res.status(400).json({ error: 'Los campos id_tipo, ancho y largo son requeridos.' });
     }
 
-    // Normalizar ancho/largo a 1 decimal para la actualización
+    // No redondear, pasar valores directos
     const anchoNorm = (() => {
       const n = parseFloat(ancho);
-      return Number.isNaN(n) ? null : Number(n.toFixed(1));
+      return Number.isNaN(n) ? null : n;
     })();
     const largoNorm = (() => {
       const n = parseFloat(largo);
-      return Number.isNaN(n) ? null : Number(n.toFixed(1));
+      return Number.isNaN(n) ? null : n;
     })();
 
     const lamina = await laminas.findByPk(id);
@@ -181,7 +181,9 @@ exports.eliminar = async (req, res) => {
 
     if (cortesCount > 0 || retazosCount > 0) {
       return res.status(400).json({
-        error: `No se puede eliminar la lámina: existen registros relacionados (cortes: ${cortesCount}, retazos: ${retazosCount}). Elimina primero los registros asociados.`
+        error: `No se puede eliminar la lámina: existen ${cortesCount} corte(s) y ${retazosCount} retazo(s) asociados. Elimina primero estos registros.`,
+        cortesCount,
+        retazosCount
       });
     }
 
@@ -206,14 +208,14 @@ exports.crearOCombinar = async (req, res) => {
       return res.status(400).json({ error: 'Los campos id_tipo, ancho y largo son requeridos.' });
     }
 
-    // Normalizar ancho/largo a 1 decimal
+    // No redondear, pasar valores directos
     const anchoNorm = (() => {
       const n = parseFloat(ancho);
-      return Number.isNaN(n) ? null : Number(n.toFixed(1));
+      return Number.isNaN(n) ? null : n;
     })();
     const largoNorm = (() => {
       const n = parseFloat(largo);
-      return Number.isNaN(n) ? null : Number(n.toFixed(1));
+      return Number.isNaN(n) ? null : n;
     })();
 
     // Buscar si ya existe una lámina con los mismos atributos (normalizados)

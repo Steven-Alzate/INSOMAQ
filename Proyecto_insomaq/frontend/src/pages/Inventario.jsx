@@ -37,18 +37,22 @@ export default function Inventario() {
   };
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
-  // Formatea un valor numérico a 1 decimal y devuelve string vacío si no es válido
-  const formatOneDecimal = (val) => {
+  // Formatea un valor numérico solo para mostrar en UI (sin truncar)
+  const formatDisplay = (val) => {
     if (val === undefined || val === null || val === "") return "";
     const n = parseFloat(val);
     if (Number.isNaN(n)) return "";
-    return String(Number(n.toFixed(1)));
+    return String(n);
   };
 
   const handleDecimalBlur = (e) => {
     const { name, value } = e.target;
     if (value === undefined || value === null || value === "") return;
-    setForm((prev) => ({ ...prev, [name]: formatOneDecimal(value) }));
+    // Solo validar que sea número, no redondear
+    const n = parseFloat(value);
+    if (!Number.isNaN(n)) {
+      setForm((prev) => ({ ...prev, [name]: String(n) }));
+    }
   };
   const handleFilterChange = (e) => setFilters({ ...filters, [e.target.name]: e.target.value });
   const clearFilters = () => setFilters({ largo: "", ancho: "", tipo: "" });
@@ -85,10 +89,10 @@ export default function Inventario() {
         await fetchTipos();
       }
 
-      // Normalizar a 1 decimal antes de enviar
+      // Pasar valores directos sin redondear
       const laminaData = {
-        largo: form.largo === "" || form.largo === null || form.largo === undefined ? null : Number(parseFloat(formatOneDecimal(form.largo))),
-        ancho: form.ancho === "" || form.ancho === null || form.ancho === undefined ? null : Number(parseFloat(formatOneDecimal(form.ancho))),
+        largo: form.largo === "" || form.largo === null || form.largo === undefined ? null : Number(parseFloat(form.largo)),
+        ancho: form.ancho === "" || form.ancho === null || form.ancho === undefined ? null : Number(parseFloat(form.ancho)),
         id_tipo,
         stock: form.stock ? Number(form.stock) : 0
       };
@@ -117,8 +121,8 @@ export default function Inventario() {
 
   const handleEdit = (lamina) => {
     setForm({
-      largo: lamina.largo !== undefined && lamina.largo !== null ? String(Number(parseFloat(lamina.largo).toFixed(1))) : "",
-      ancho: lamina.ancho !== undefined && lamina.ancho !== null ? String(Number(parseFloat(lamina.ancho).toFixed(1))) : "",
+      largo: lamina.largo !== undefined && lamina.largo !== null ? String(lamina.largo) : "",
+      ancho: lamina.ancho !== undefined && lamina.ancho !== null ? String(lamina.ancho) : "",
       tipo_lamina: lamina.tipo || "",
       stock: lamina.stock !== undefined && lamina.stock !== null ? String(lamina.stock) : "",
     });
@@ -130,18 +134,21 @@ export default function Inventario() {
     try {
       const res = await fetch(`${API_URL}/${id}`, { method: "DELETE" });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Error al eliminar");
+      if (!res.ok) {
+        throw new Error(data.error || data.message || "Error al eliminar");
+      }
       alert(data.message || "Lámina eliminada");
       fetchLaminas();
     } catch (err) {
       console.error("Error al eliminar la lámina:", err);
+      alert(`Error: ${err.message}`);
     }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-100 to-gray-200 flex flex-col">
       <header className="bg-[#2a3f54] text-white py-5 shadow-lg">
-        <h1 className="text-3xl font-semibold text-center">Inventario de Láminas</h1>
+        <h1 className="text-3xl font-semibold text-center">INVENTARIO DE LÁMINAS</h1>
       </header>
 
       <main className="flex-1 w-full mx-auto px-7 py-8 flex flex-col gap-10">

@@ -24,8 +24,7 @@ export default function Retazos() {
     if (v === null || v === undefined || v === "") return "-";
     const n = Number(String(v).replace(',', '.'));
     if (Number.isNaN(n)) return String(v);
-    const rounded = Math.round(n * 1000) / 1000;
-    return Number.isInteger(rounded) ? String(rounded) : String(rounded);
+    return Number(n.toFixed(2));
   };
 
   useEffect(() => {
@@ -150,7 +149,7 @@ export default function Retazos() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-100 to-gray-200 flex flex-col">
       <header className="bg-[#2a3f54] text-white py-5 shadow-lg">
-        <h1 className="text-3xl font-semibold text-center">Retazos</h1>
+        <h1 className="text-3xl font-semibold text-center">RETAZOS</h1>
       </header>
 
       <main className="flex-1 w-full mx-auto px-7 py-8 flex flex-col gap-10">
@@ -313,8 +312,8 @@ export default function Retazos() {
                           <tr key={l.id} className="hover:bg-gray-50">
                             <td className="py-2">{l.id}</td>
                             <td className="py-2">{l.tipo || '-'}</td>
-                            <td className="py-2">{l.ancho !== undefined && l.ancho !== null ? (Number.isNaN(Number(l.ancho)) ? '-' : Number(parseFloat(l.ancho).toFixed(1))) : '-'}</td>
-                            <td className="py-2">{l.largo !== undefined && l.largo !== null ? (Number.isNaN(Number(l.largo)) ? '-' : Number(parseFloat(l.largo).toFixed(1))) : '-'}</td>
+                            <td className="py-2">{l.ancho !== undefined && l.ancho !== null ? (Number.isNaN(Number(l.ancho)) ? '-' : Number(parseFloat(l.ancho).toFixed(2))) : '-'}</td>
+                            <td className="py-2">{l.largo !== undefined && l.largo !== null ? (Number.isNaN(Number(l.largo)) ? '-' : Number(parseFloat(l.largo).toFixed(2))) : '-'}</td>
                             <td className="py-2">{l.stock ?? '-'}</td>
                             <td className="py-2 text-right">
                               <button type="button" onClick={() => { setForm((f) => ({ ...f, id_lamina_original: String(l.id) })); setShowLaminaModal(false); }} className="bg-teal-600 text-white px-3 py-1 rounded hover:bg-teal-700">Seleccionar</button>

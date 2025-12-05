@@ -141,7 +141,7 @@ exports.obtenerTodos = async (req, res) => {
   try {
     const cortes_data = await cortes.findAll({
       include: [
-        { model: laminas, attributes: ['id', 'ancho', 'largo'] },
+        { model: laminas, attributes: ['id', 'ancho', 'largo', 'tipo'] },
         { model: maquinas, attributes: ['id', 'nombre'] },
         { model: usuarios, attributes: ['id', 'nombre', 'email'] }
       ]
@@ -155,7 +155,6 @@ exports.obtenerTodos = async (req, res) => {
       ancho_cortado: c.ancho_cortado,
       largo_cortado: c.largo_cortado,
       id_maquina: c.id_maquina,
-      maquina: c.maquinas ? c.maquinas.nombre : null,
       id_usuario: c.id_usuario,
       usuario: c.usuarios ? c.usuarios.nombre : null,
       fecha: c.fecha,

@@ -37,6 +37,17 @@ export default function Maquinas() {
       return;
     }
 
+    // Validar que no exista una máquina con el mismo nombre
+    const nombreTrimmed = form.nombre.trim().toLowerCase();
+    const maquinaExistente = maquinas.find(m => 
+      m.nombre.toLowerCase() === nombreTrimmed && m.id !== editId
+    );
+
+    if (maquinaExistente) {
+      alert("Ya existe una máquina con este nombre. Por favor, elige otro nombre.");
+      return;
+    }
+
     try {
       const method = editId ? "PUT" : "POST";
       const url = editId ? `${API_URL}/${editId}` : API_URL;
@@ -87,7 +98,7 @@ export default function Maquinas() {
       {/* Header */}
       <header className="bg-[#2a3f54] text-white py-5 shadow-lg">
         <h1 className="text-3xl font-semibold text-center">
-          Inventario de Máquinas
+          INVENTARIO DE MÁQUINAS
         </h1>
       </header>
 
