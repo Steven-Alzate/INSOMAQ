@@ -1,5 +1,5 @@
 const db = require('../models');
-const { cortes, laminas, maquinas, usuarios, retazos } = db;
+const { cortes, laminas, maquinas, usuarios, retazos, tipo_lamina } = db;
 
 // Crear corte
 exports.crear = async (req, res) => {
@@ -27,6 +27,7 @@ exports.crear = async (req, res) => {
         // Crear corte vinculando la lámina original (para mantener compatibilidad)
         const nuevoCorte = await cortes.create({
           id_lamina: rz.id_lamina_original,
+          id_retazo: id_retazo,
           ancho_cortado,
           largo_cortado,
           id_maquina,
@@ -141,7 +142,7 @@ exports.obtenerTodos = async (req, res) => {
   try {
     const cortes_data = await cortes.findAll({
       include: [
-        { model: laminas, attributes: ['id', 'ancho', 'largo', 'tipo'] },
+        { model: laminas, attributes: ['id', 'ancho', 'largo'], include: [{ model: tipo_lamina, attributes: ['id', 'nombre'] }] },
         { model: maquinas, attributes: ['id', 'nombre'] },
         { model: usuarios, attributes: ['id', 'nombre', 'email'] }
       ]
@@ -151,7 +152,9 @@ exports.obtenerTodos = async (req, res) => {
     const mapped = cortes_data.map(c => ({
       id: c.id,
       id_lamina: c.id_lamina,
-      lamina: c.laminas ? (c.laminas.tipo || `${c.laminas.largo} x ${c.laminas.ancho}`) : null,
+      id_retazo: c.id_retazo || null,
+      lamina: c.laminas ? (c.laminas.tipo_lamina && c.laminas.tipo_lamina.nombre ? c.laminas.tipo_lamina.nombre : `${c.laminas.largo} x ${c.laminas.ancho}`) : null,
+      maquina: c.maquinas ? c.maquinas.nombre : null,
       ancho_cortado: c.ancho_cortado,
       largo_cortado: c.largo_cortado,
       id_maquina: c.id_maquina,
@@ -174,7 +177,7 @@ exports.obtenerPorId = async (req, res) => {
     const { id } = req.params;
     const corte = await cortes.findByPk(id, {
       include: [
-        { model: laminas, attributes: ['id', 'ancho', 'largo'] },
+        { model: laminas, attributes: ['id', 'ancho', 'largo'], include: [{ model: tipo_lamina, attributes: ['id', 'nombre'] }] },
         { model: maquinas, attributes: ['id', 'nombre'] },
         { model: usuarios, attributes: ['id', 'nombre', 'email'] }
       ]
@@ -184,7 +187,21 @@ exports.obtenerPorId = async (req, res) => {
       return res.status(404).json({ message: 'Corte no encontrado.' });
     }
 
-    res.status(200).json(corte);
+    const mapped = {
+      id: corte.id,
+      id_lamina: corte.id_lamina,
+      id_retazo: corte.id_retazo,
+      lamina: corte.laminas ? (corte.laminas.tipo_lamina && corte.laminas.tipo_lamina.nombre ? corte.laminas.tipo_lamina.nombre : `${corte.laminas.largo} x ${corte.laminas.ancho}`) : null,
+      ancho_cortado: corte.ancho_cortado,
+      largo_cortado: corte.largo_cortado,
+      id_maquina: corte.id_maquina,
+      maquina: corte.maquinas ? corte.maquinas.nombre : null,
+      id_usuario: corte.id_usuario,
+      usuario: corte.usuarios ? corte.usuarios.nombre : null,
+      fecha: corte.fecha,
+      hora: corte.hora
+    };
+    res.status(200).json(mapped);
   } catch (err) {
     console.error('Error al obtener corte:', err);
     res.status(500).json({ error: 'Error al obtener el corte.' });
@@ -195,10 +212,10 @@ exports.obtenerPorId = async (req, res) => {
 exports.actualizar = async (req, res) => {
   try {
     const { id } = req.params;
-    const { id_lamina, ancho_cortado, largo_cortado, id_maquina, id_usuario } = req.body;
+    const { id_lamina, id_retazo, ancho_cortado, largo_cortado, id_maquina, id_usuario } = req.body;
 
-    if (!id_lamina || !ancho_cortado || !largo_cortado || !id_maquina || !id_usuario) {
-      return res.status(400).json({ error: 'Todos los campos son requeridos.' });
+    if ((!id_lamina && !id_retazo) || !ancho_cortado || !largo_cortado || !id_maquina || !id_usuario) {
+      return res.status(400).json({ error: 'Todos los campos son requeridos. Se necesita id_lamina o id_retazo.' });
     }
 
     const corte = await cortes.findByPk(id);
@@ -206,18 +223,33 @@ exports.actualizar = async (req, res) => {
       return res.status(404).json({ message: 'Corte no encontrado.' });
     }
 
-    // Validar que las medidas no superen las dimensiones de la lámina seleccionada
-    const lam = await laminas.findByPk(id_lamina);
-    if (!lam) {
-      return res.status(404).json({ error: 'Lámina no encontrada.' });
-    }
-    const anchoLamina = Number(lam.ancho) || 0;
-    const largoLamina = Number(lam.largo) || 0;
-    if (Number(ancho_cortado) > anchoLamina || Number(largo_cortado) > largoLamina) {
-      return res.status(400).json({ error: 'Las medidas solicitadas superan las dimensiones de la lámina seleccionada.' });
+    // Si se actualiza con lámina, validar las medidas
+    if (id_lamina) {
+      const lam = await laminas.findByPk(id_lamina);
+      if (!lam) {
+        return res.status(404).json({ error: 'Lámina no encontrada.' });
+      }
+      const anchoLamina = Number(lam.ancho) || 0;
+      const largoLamina = Number(lam.largo) || 0;
+      if (Number(ancho_cortado) > anchoLamina || Number(largo_cortado) > largoLamina) {
+        return res.status(400).json({ error: 'Las medidas solicitadas superan las dimensiones de la lámina seleccionada.' });
+      }
     }
 
-    await corte.update({ id_lamina, ancho_cortado, largo_cortado, id_maquina, id_usuario });
+    // Si se actualiza con retazo, validar las medidas
+    if (id_retazo) {
+      const rz = await retazos.findByPk(id_retazo);
+      if (!rz) {
+        return res.status(404).json({ error: 'Retazo no encontrado.' });
+      }
+      const anchoRetazo = Number(rz.ancho) || 0;
+      const largoRetazo = Number(rz.largo) || 0;
+      if (Number(ancho_cortado) > anchoRetazo || Number(largo_cortado) > largoRetazo) {
+        return res.status(400).json({ error: 'Las medidas solicitadas superan las dimensiones del retazo seleccionado.' });
+      }
+    }
+
+    await corte.update({ id_lamina, id_retazo, ancho_cortado, largo_cortado, id_maquina, id_usuario });
     res.status(200).json({ message: 'Corte actualizado exitosamente', data: corte });
   } catch (err) {
     console.error('Error al actualizar corte:', err);

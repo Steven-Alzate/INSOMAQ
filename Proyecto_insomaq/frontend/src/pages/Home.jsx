@@ -37,6 +37,12 @@ export default function Home() {
   // Estado para máquinas
   const [maquinas, setMaquinas] = useState([]);
 
+  // Estado para contadores reales
+  const [totalLaminas, setTotalLaminas] = useState(0);
+  const [totalCortes, setTotalCortes] = useState(0);
+  const [totalRetazos, setTotalRetazos] = useState(0);
+  const [totalAlertas, setTotalAlertas] = useState(0);
+
   // Estado para datos de aprovechamiento
   const [pieData, setPieData] = useState({
     labels: ["Material en cortes", "Material en retazos (desperdicio)"],
@@ -89,6 +95,37 @@ export default function Home() {
     const id = setInterval(cargarCortesPorMaquina, 30000);
     return () => clearInterval(id);
   }, [maquinas]);
+
+  // Cargar contadores
+  const cargarContadores = async () => {
+    try {
+      const [resLam, resCor, resRet, resAler] = await Promise.all([
+        fetch('http://localhost:4000/laminas'),
+        fetch('http://localhost:4000/cortes'),
+        fetch('http://localhost:4000/retazos'),
+        fetch('http://localhost:4000/alertas')
+      ]);
+      
+      if (resLam.ok) {
+        const laminas = await resLam.json();
+        setTotalLaminas(laminas.length || 0);
+      }
+      if (resCor.ok) {
+        const cortes = await resCor.json();
+        setTotalCortes(cortes.length || 0);
+      }
+      if (resRet.ok) {
+        const retazos = await resRet.json();
+        setTotalRetazos(retazos.length || 0);
+      }
+      if (resAler.ok) {
+        const alertas = await resAler.json();
+        setTotalAlertas(alertas.length || 0);
+      }
+    } catch (err) {
+      console.error('Error cargando contadores:', err);
+    }
+  };
 
   // Cargar alertas recientes
   const cargarAlertas = async () => {
@@ -184,9 +221,14 @@ export default function Home() {
   };
 
   useEffect(() => {
+    cargarContadores();
     cargarAprovechamiento();
-    const id = setInterval(cargarAprovechamiento, 30000);
-    return () => clearInterval(id);
+    const id1 = setInterval(cargarContadores, 30000);
+    const id2 = setInterval(cargarAprovechamiento, 30000);
+    return () => {
+      clearInterval(id1);
+      clearInterval(id2);
+    };
   }, []);
 
   // Opciones para gráfico de barras
@@ -228,7 +270,7 @@ export default function Home() {
           className="bg-white p-5 rounded-xl shadow text-center hover:bg-cyan-50 hover:scale-105 transition transform"
         >
           <div className="text-4xl mb-2">⬜</div>
-          <p className="text-2xl font-bold">300</p>
+          <p className="text-2xl font-bold">{totalLaminas}</p>
           <span className="text-lg font-medium">Láminas</span>
         </button>
 
@@ -237,7 +279,7 @@ export default function Home() {
           className="bg-white p-5 rounded-xl shadow text-center hover:bg-cyan-50 hover:scale-105 transition transform"
         >
           <div className="text-4xl mb-2">✂️</div>
-          <p className="text-2xl font-bold">58</p>
+          <p className="text-2xl font-bold">{totalCortes}</p>
           <span className="text-lg font-medium">Cortes</span>
         </button>
 
@@ -246,7 +288,7 @@ export default function Home() {
           className="bg-white p-5 rounded-xl shadow text-center hover:bg-cyan-50 hover:scale-105 transition transform"
         >
           <div className="text-4xl mb-2">🧩</div>
-          <p className="text-2xl font-bold">120</p>
+          <p className="text-2xl font-bold">{totalRetazos}</p>
           <span className="text-lg font-medium">Retazos</span>
         </button>
 
@@ -255,7 +297,7 @@ export default function Home() {
           className="bg-white p-5 rounded-xl shadow text-center hover:bg-red-50 hover:scale-105 transition transform"
         >
           <div className="text-4xl mb-2">⚠️</div>
-          <p className="text-2xl font-bold">12</p>
+          <p className="text-2xl font-bold">{totalAlertas}</p>
           <span className="text-lg font-medium text-red-600">Alertas</span>
         </button>
       </div>
